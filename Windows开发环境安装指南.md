@@ -1754,24 +1754,41 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 ## 二十一、Claude Code 与 Codex
 
 > 两款 **AI 终端编程 CLI**，在命令行里做代码生成、重构、调试。  
-> **前置**：Node.js 22+（nvm `nvm use 22`）、Git（已装）。
+> **前置**：Git（已装）；**Codex 若用 npm 安装**还需 Node.js 22+（`nvm use 22`）。  
+> **Claude Code 原生安装不需要 Node.js。**
+
+### 安装顺序
+
+```
+① Git 已装好
+② Claude Code（原生安装，推荐）
+③ Codex CLI（原生安装或 npm）
+④ 验证 claude / codex 命令
+⑤ 再装 CC Switch（管理 API 配置）
+```
 
 ### 路径规划
 
-| 工具 | 程序/配置位置 |
-|------|---------------|
-| Claude Code | 程序 `%USERPROFILE%\.local\bin\claude.exe` |
-| Claude 配置 | `%USERPROFILE%\.claude\` |
-| Codex CLI | npm 全局（`E:\Envs\Node\npm-global`） |
-| Codex 配置 | `%USERPROFILE%\.codex\config.toml` |
+| 工具 | 程序位置 | 配置位置 |
+|------|----------|----------|
+| Claude Code（原生） | `%USERPROFILE%\.local\bin\claude.exe` | `%USERPROFILE%\.claude\` |
+| Codex（原生） | `%USERPROFILE%\.local\bin\codex.exe`（或安装器指定路径） | `%USERPROFILE%\.codex\config.toml` |
+| Codex（npm） | `E:\Envs\Node\npm-global\codex.cmd` | `%USERPROFILE%\.codex\config.toml` |
 
-> CLI 配置目录默认在 C 盘用户目录，体积小；**用 CC Switch 统一管理**，无需手改 JSON。
+> CLI 配置目录默认在 C 盘用户目录，体积小；**用 CC Switch 统一管理**，无需手改 JSON/TOML。
+
+### 账号要求
+
+| 工具 | 登录方式 |
+|------|----------|
+| Claude Code | Anthropic 账号 / Claude 订阅 / Console API Key |
+| Codex | ChatGPT Plus/Pro/Business 等订阅，或 OpenAI API Key |
 
 ---
 
 ### Claude Code 安装
 
-**官方推荐：原生安装（自动更新）**
+**官方推荐：原生安装（无需 Node.js，后台自动更新）**
 
 **普通 PowerShell**：
 
@@ -1779,17 +1796,27 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 irm https://claude.ai/install.ps1 | iex
 ```
 
-或使用 WinGet：
+**CMD 用户**：
+
+```batch
+curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
+```
+
+**WinGet（备选，不自动更新）**：
 
 ```powershell
 winget install Anthropic.ClaudeCode
+# 升级：winget upgrade Anthropic.ClaudeCode
 ```
 
-**备选：npm 安装**
+**npm 安装（备选，需 Node.js 18+）**
 
 ```powershell
+nvm use 22
 npm install -g @anthropic-ai/claude-code
 ```
+
+> 若曾用 npm 装过，建议先迁到原生：`claude install`，再 `npm uninstall -g @anthropic-ai/claude-code`，避免两套二进制冲突。
 
 ### Claude Code 用户 Path 追加
 
@@ -1805,44 +1832,76 @@ npm install -g @anthropic-ai/claude-code
 
 ```powershell
 claude --version
+claude doctor    # 可选，检查安装状态
 claude
 ```
 
 首次运行按提示登录 Anthropic 账号。
 
-> 若提示 `'claude' 不是内部命令`：检查 Path 是否含 `%USERPROFILE%\.local\bin`，新开终端再试。
+> 若提示 `'claude' 不是内部命令`：检查 Path 是否含 `%USERPROFILE%\.local\bin`，新开终端再试。  
+> Windows 上建议已装 **Git for Windows**，Claude Code 才能用 Bash 工具；否则回退到 PowerShell。
 
 ---
 
 ### Codex CLI 安装
 
-**前置：Node.js 22+**
+**方式 A：原生安装（推荐，无需 npm）**
+
+**普通 PowerShell**：
+
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"
+```
+
+**方式 B：npm 安装**
+
+前置：Node.js 22+，且 npm 全局目录已配到 E 盘（见 [npm 章节](#九npm-与-pnpm)）：
 
 ```powershell
 nvm use 22
 npm install -g @openai/codex
 ```
 
-> 包名必须是 **`@openai/codex`**，不是 `codex`（后者是无关旧包）。
+> 包名必须是 **`@openai/codex`**，不是 `codex`（后者是无关旧包）。  
+> npm 全局包装到 `E:\Envs\Node\npm-global`，需确保用户 Path 已含该目录。
 
 ### Codex 配置（Windows 沙箱）
 
-创建或编辑 `%USERPROFILE%\.codex\config.toml`：
+首次运行前，创建或编辑 `%USERPROFILE%\.codex\config.toml`：
 
 ```toml
 [windows]
-sandbox = "elevated"   # 推荐，需管理员权限配置一次
-# sandbox = "unelevated"  # 无管理员权限时的备选
+sandbox = "elevated"   # 推荐，首次需管理员批准 UAC
+# sandbox = "unelevated"  # 公司电脑策略限制时的备选
 ```
 
+| 模式 | 说明 |
+|------|------|
+| `elevated` | 更强隔离，推荐；首次会弹 UAC，需点允许 |
+| `unelevated` | 弱一些，但公司管控电脑进不了 elevated 时可用 |
+
+> 项目目录建议放在 `E:\Workspace\...`，在 PowerShell 里 `cd` 进去后运行 `codex`。
+
 ### Codex 验证
+
+**新开 PowerShell**：
 
 ```powershell
 codex --version
 codex
 ```
 
-首次运行通过浏览器登录 ChatGPT 或配置 API Key。
+首次运行通过浏览器登录 ChatGPT，或配置 API Key。
+
+### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| `claude` 找不到 | 用户 Path 加 `%USERPROFILE%\.local\bin`，新开终端 |
+| `codex` 找不到（npm 装） | 确认 Path 含 `E:\Envs\Node\npm-global`，执行 `npm bin -g` 核对 |
+| `Missing optional dependency @openai/codex-win32-x64` | 卸载重装：`npm uninstall -g @openai/codex` 再 `npm install -g @openai/codex@latest`；或改用原生安装 |
+| Codex elevated 沙箱失败 | 先试 `sandbox = "unelevated"`；公司电脑找 IT 放行 |
+| 两者都想换 API 供应商 | 装 [CC Switch](#二十二cc-switch)，不要手改配置文件 |
 
 ---
 
