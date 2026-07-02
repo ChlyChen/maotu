@@ -1394,6 +1394,7 @@ D:\Portable\VCS\Git\cmd
 D:\Portable\bin
 D:\Apps\Utilities\7-Zip
 %USERPROFILE%\.local\bin
+%LOCALAPPDATA%\Programs\OpenAI\Codex\bin
 %JAVA_HOME%\bin
 %MAVEN_HOME%\bin
 %MYSQL_HOME%\bin
@@ -1576,7 +1577,12 @@ PUB_HOSTED_URL=https://pub.flutter-io.cn
 
 ### 19. `claude` 命令找不到
 
-**处理**：用户 Path 追加 `%USERPROFILE%\.local\bin`，**新开终端**再试。
+**处理**：
+
+1. WinGet 安装后一般已自动加 Path，执行 `where.exe claude` 查看
+2. 若仍没有，WinGet 路径示例：`%LOCALAPPDATA%\Microsoft\WinGet\Packages\Anthropic.ClaudeCode_...\claude.exe`
+3. 原生脚本安装则追加 `%USERPROFILE%\.local\bin`
+4. **新开终端**再试
 
 ### 20. Claude Code 安装报 `ECONNREFUSED` / `Failed to fetch version from downloads.claude.ai`
 
@@ -1624,6 +1630,26 @@ curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
 ### 23. CC Switch 切换后 API 仍不通
 
 **处理**：Codex 切换后新开终端；检查 API Key、Base URL、模型名；Claude Code 可在 CC Switch 里重新点「使用」。
+
+### 24. `codex` 命令找不到，但 `codex.exe` 存在
+
+**原因**：原生安装未自动加 Path。
+
+**处理**：用户 Path 追加 `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`，新开终端。验证：`where.exe codex`。
+
+### 25. Codex 报找不到 `codex-windows-sandbox-setup.exe`
+
+**处理**：`config.toml` 设 `sandbox = "unelevated"`，或首次沙箱菜单选 **2. Use non-admin sandbox**。
+
+### 26. CC Switch 配置在 C 盘、`E:\Data\codex` 只有沙箱配置
+
+**原因**：CC Switch 不写 `CODEX_HOME` 目录。
+
+**处理**：对 `%USERPROFILE%\.codex` 和 `%USERPROFILE%\.claude` 做 Junction 到 `E:\Data\codex` / `E:\Data\claude`（见第二十一章方式 C）。
+
+### 27. `claude doctor` 提示 `.claude.json not found`
+
+**处理**：从 `E:\Data\claude\backups\` 选最新 `.claude.json.backup.*` 复制为 `E:\Data\claude\.claude.json`。Remote Control ‼ 对 API Key 用户可忽略。
 
 ---
 
@@ -1805,11 +1831,12 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 ```
 ①（可选）设用户环境变量：CLAUDE_CONFIG_DIR、CODEX_HOME → E:\Data\
 ② 安装 Claude Code（国内优先 WinGet）
-③ 安装 Codex CLI（原生 install.ps1 或 npm）
-④ 验证：claude --version、codex --version（此时不必完成登录）
-⑤ 安装 CC Switch
-⑥ 在 CC Switch 里分别为 Claude Code / Codex 添加 API Key 供应商并「启用」
-⑦ 新开 PowerShell，cd 到 E:\Workspace\...，运行 claude / codex 验证 API
+③ 安装 Codex CLI（原生 install.ps1）→ 手动加 Path（见下文）
+④ 验证：claude --version、codex --version（不必先登录）
+⑤ 安装 CC Switch（x64 选 Windows.msi，非 arm64）
+⑥ 分别为 Claude Code / Codex 添加 API Key 供应商并「启用」
+⑦ 数据迁 E 盘 + Junction（CC Switch 写 C 盘用户目录，必须做）
+⑧ 新开普通 PowerShell → cd E:\Workspace\... → claude / codex 验证
 ```
 
 | 步骤 | 做什么 | 不要做什么 |
@@ -1820,14 +1847,15 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 
 ### 路径规划
 
-| 工具 | 程序位置 | 默认数据目录（C 盘） | E 盘目标（推荐） |
-|------|----------|----------------------|------------------|
-| Claude Code | `%USERPROFILE%\.local\bin\claude.exe` | `%USERPROFILE%\.claude\` | `E:\Data\claude` |
-| Claude 额外状态 | — | `%USERPROFILE%\.claude.json` | 随 `CLAUDE_CONFIG_DIR` 管理 |
-| Codex | `%USERPROFILE%\.local\bin\` 或 npm 全局 | `%USERPROFILE%\.codex\` | `E:\Data\codex` |
+| 工具 | 程序位置（常见） | CC Switch 写入（C 盘） | E 盘真实数据 |
+|------|------------------|------------------------|--------------|
+| Claude Code（WinGet） | `%LOCALAPPDATA%\Microsoft\WinGet\Packages\...\claude.exe` | `%USERPROFILE%\.claude\` | `E:\Data\claude` |
+| Claude Code（原生脚本） | `%USERPROFILE%\.local\bin\claude.exe` | 同上 | 同上 |
+| Codex（原生安装） | `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin\codex.exe` | `%USERPROFILE%\.codex\` | `E:\Data\codex` |
+| Codex（npm） | `E:\Envs\Node\npm-global\codex.cmd` | 同上 | 同上 |
 
-> 两者都会产生**会话记录、缓存、日志**，默认在 C 盘用户目录；体积通常比 Cursor 小，但重度使用会增长。  
-> 官方支持用**环境变量**迁到 E 盘（比 Cursor 的 Junction 更干净）。**用 CC Switch 管理 API 配置**，无需手改 JSON/TOML。
+> **重要**：`CLAUDE_CONFIG_DIR` / `CODEX_HOME` 只影响 CLI 自身读写的部分配置；**CC Switch 始终写入 `%USERPROFILE%\.claude\` 和 `%USERPROFILE%\.codex\`**。  
+> 要统一到 E 盘，必须再做 **Junction**（见下文「数据迁出 C 盘 → 方式 C」），与 Cursor 同理。
 
 ### 账号与认证方式
 
@@ -1893,12 +1921,19 @@ curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
 
 无 `HTTP/2 200` / `HTTP/1.1 200` → 网络被挡，用 WinGet 或代理。
 
-### Claude Code 用户 Path 追加
+### Claude Code 用户 Path
 
-原生安装后需确保（安装器通常自动添加）：
+| 安装方式 | Path 是否自动添加 | 手动追加 |
+|----------|-------------------|----------|
+| **WinGet**（国内推荐） | 通常已自动加入 | 一般无需 |
+| 原生 `irm` 脚本 | 通常自动 | `%USERPROFILE%\.local\bin` |
 
-```
-%USERPROFILE%\.local\bin
+验证：
+
+```powershell
+claude --version
+where.exe claude
+# WinGet 常见：...\WinGet\Packages\Anthropic.ClaudeCode_...\claude.exe
 ```
 
 ### Claude Code 验证
@@ -1910,9 +1945,12 @@ claude --version
 claude doctor    # 可选
 ```
 
-> 此阶段只需确认**命令可用**；API Key 在下一步 [CC Switch](#二十二cc-switch) 配置后再 `claude` 正式使用。  
-> 若提示 `'claude' 不是内部命令`：检查 Path 是否含 `%USERPROFILE%\.local\bin`，新开终端再试。  
-> Windows 上建议已装 **Git for Windows**，Claude Code 才能用 Bash 工具；否则回退到 PowerShell。
+> 此阶段只需确认**命令可用**；API Key 在 [CC Switch](#二十二cc-switch) 配置后再正式使用。  
+> WinGet 安装时 `where claude` 指向 WinGet 目录是**正常现象**，不必强求 `.local\bin`。  
+> `claude doctor` 里 **Remote Control ‼** 可忽略（API Key 用户无需登录 claude.ai）。  
+> 若报 `.claude.json not found` 且有 backup，恢复：  
+> `Copy-Item "E:\Data\claude\backups\.claude.json.backup.*" "E:\Data\claude\.claude.json"`（选最新一个）。  
+> Windows 上建议已装 **Git for Windows**，Claude Code 才能用 Bash 工具。
 
 ---
 
@@ -1935,8 +1973,33 @@ nvm use 22
 npm install -g @openai/codex
 ```
 
-> 包名必须是 **`@openai/codex`**，不是 `codex`（后者是无关旧包）。  
-> npm 全局包装到 `E:\Envs\Node\npm-global`，需确保用户 Path 已含该目录。
+> 包名必须是 **`@openai/codex`**，不是 `codex`（后者是无关旧包）。
+
+### Codex 用户 Path（原生安装常需手动添加）
+
+原生安装后 **WinGet/安装器不一定自动加 Path**，需确认：
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\Programs\OpenAI\Codex\bin\codex.exe"
+```
+
+若为 `True`，将下面路径加入 **用户 Path**：
+
+```text
+%LOCALAPPDATA%\Programs\OpenAI\Codex\bin
+```
+
+PowerShell 一次性添加：
+
+```powershell
+$codexBin = "$env:LOCALAPPDATA\Programs\OpenAI\Codex\bin"
+$p = [Environment]::GetEnvironmentVariable("Path", "User")
+if ($p -notlike "*$codexBin*") {
+    [Environment]::SetEnvironmentVariable("Path", "$p;$codexBin", "User")
+}
+```
+
+**新开终端**后验证：`codex --version`、`where.exe codex`。
 
 ### Codex 验证（仅确认安装）
 
@@ -1958,18 +2021,28 @@ E:\Data\codex\config.toml          # 已设 CODEX_HOME
 %USERPROFILE%\.codex\config.toml   # 默认
 ```
 
-首次运行前创建或编辑，加入沙箱配置：
+首次运行前创建或编辑，**国内实测建议直接用 unelevated**（elevated 可能报找不到 `codex-windows-sandbox-setup.exe`）：
 
 ```toml
 [windows]
-sandbox = "elevated"   # 推荐，首次需管理员批准 UAC
-# sandbox = "unelevated"  # 公司电脑策略限制时的备选
+sandbox = "unelevated"
+# sandbox = "elevated"   # 更强隔离；若 setup.exe 报错再改回 unelevated
 ```
 
 | 模式 | 说明 |
 |------|------|
-| `elevated` | 更强隔离，推荐；首次会弹 UAC，需点允许 |
-| `unelevated` | 弱一些，但公司管控电脑进不了 elevated 时可用 |
+| `unelevated` | **推荐默认**。个人开发机够用；无需管理员配沙箱 |
+| `elevated` | 更强隔离；首次弹 UAC；部分版本有 helper 找不到的 bug |
+
+首次启动若出现沙箱菜单：
+
+```text
+1. Set up default sandbox (Administrator)   ← 可能报找不到 setup.exe
+2. Use non-admin sandbox                    ← 选这个
+3. Quit
+```
+
+选 **2**，或与 `config.toml` 中 `unelevated` 保持一致。
 
 > 项目目录建议放在 `E:\Workspace\...`，在 PowerShell 里 `cd` 进去后运行 `codex`。  
 > API Key、Base URL、模型名由 **CC Switch 写入**，不要与沙箱配置混在一起手改。
@@ -2005,12 +2078,11 @@ New-Item -ItemType Directory -Path "E:\Data\claude" -Force
 New-Item -ItemType Directory -Path "E:\Data\codex" -Force
 ```
 
-设好后安装并首次运行 Claude Code / Codex，数据从一开始就在 E 盘。  
-`TEMP` / `TMP` 已指向 `E:\Temp` 时，Claude Code 临时文件也不会堆 C 盘。
+设好后安装 CLI；但 **CC Switch 仍写 C 盘用户目录**，务必再做「方式 C」Junction。
 
-#### 方式 B：已使用后迁移
+#### 方式 B：已使用后迁移（robocopy）
 
-1. 完全退出 `claude` / `codex`（确认任务管理器无相关进程）
+1. 完全退出 `claude` / `codex`、CC Switch
 2. 设好上述用户环境变量
 3. 迁移已有数据：
 
@@ -2026,7 +2098,34 @@ if (Test-Path "$env:USERPROFILE\.codex") {
 }
 ```
 
-4. 新开终端，运行 `claude` / `codex` 验证登录和配置正常
+#### 方式 C：Junction 统一到 E 盘（**配合 CC Switch 必做**）
+
+CC Switch 写入 `%USERPROFILE%\.claude\settings.json` 和 `%USERPROFILE%\.codex\auth.json`，与 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` 可能分裂。**推荐做法**：
+
+```powershell
+# 管理员 PowerShell；先退出 claude / codex / CC Switch
+
+# Claude Code
+robocopy "$env:USERPROFILE\.claude" "E:\Data\claude" /E /MOVE /R:1 /W:1
+Remove-Item "$env:USERPROFILE\.claude" -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude" -Target "E:\Data\claude"
+
+# Codex
+robocopy "$env:USERPROFILE\.codex" "E:\Data\codex" /E /MOVE /R:1 /W:1
+Remove-Item "$env:USERPROFILE\.codex" -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.codex" -Target "E:\Data\codex"
+```
+
+验证（应显示 `Junction` 且 `Target` 指向 E 盘）：
+
+```powershell
+Get-Item "$env:USERPROFILE\.claude" | Select-Object LinkType, Target
+Get-Item "$env:USERPROFILE\.codex" | Select-Object LinkType, Target
+Test-Path "E:\Data\claude\settings.json"    # CC Switch 写的 Claude 配置
+Test-Path "E:\Data\codex\config.toml"       # CC Switch 写的 Codex 配置
+```
+
+4. 新开终端，运行 `claude` / `codex` 验证
 
 #### 清理缓存（保留配置和登录）
 
@@ -2045,19 +2144,28 @@ E:\Data\codex\attachments\
 
 | 现象 | 处理 |
 |------|------|
-| Claude 安装 `ECONNREFUSED downloads.claude.ai` | 国内优先 **WinGet**；或开代理后重跑 `irm` 脚本；或 npm + npmmirror |
+| Claude 安装 `ECONNREFUSED downloads.claude.ai` | 国内优先 **WinGet**；或开代理；或 npm + npmmirror |
 | WinGet 提示同意 msstore 协议 | 输入 **`Y`** 继续 |
-| `claude` 找不到 | 用户 Path 加 `%USERPROFILE%\.local\bin`，新开终端 |
-| `codex` 找不到（npm 装） | 确认 Path 含 `E:\Envs\Node\npm-global`，执行 `npm bin -g` 核对 |
-| `Missing optional dependency @openai/codex-win32-x64` | 卸载重装或改用原生安装 |
-| Codex 弹出 ChatGPT 登录界面 | `Ctrl+C` 退出 → CC Switch 配好 API Key → 新开终端再 `codex` |
-| Codex elevated 沙箱失败 | 先试 `sandbox = "unelevated"`；公司电脑找 IT 放行 |
-| 换 API 供应商 | 用 [CC Switch](#二十二cc-switch)，不要手改配置文件 |
-| C 盘被 CLI 数据占满 | 设 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` 到 `E:\Data\`，见上文 |
+| `claude` 找不到 | WinGet 装后一般自动有 Path；否则查 `where.exe claude` |
+| `codex` 找不到 | 用户 Path 加 `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`，新开终端 |
+| `codex` 找不到（npm 装） | Path 含 `E:\Envs\Node\npm-global` |
+| `找不到 codex-windows-sandbox-setup.exe` | `config.toml` 改 `sandbox = "unelevated"` 或沙箱菜单选 **2** |
+| Codex 弹出 ChatGPT 登录 | `Ctrl+C` → CC Switch 启用供应商 → 新开终端；或选 **3. API key** |
+| CC Switch 写了 C 盘、E 盘没配置 | 做 **Junction**（方式 C） |
+| `.claude.json not found` | 从 `E:\Data\claude\backups\` 最新 backup 复制恢复 |
+| `claude doctor` Remote Control ‼ | API Key 用户可忽略 |
+| 换 API 供应商 | CC Switch 切换；Codex 需新开终端 |
+| C 盘被 CLI 数据占满 | `CLAUDE_CONFIG_DIR` / `CODEX_HOME` + Junction |
 
 ---
 
-### 三者分工
+### 三者分工与数据布局（汇总）
+
+| 工具 | 程序 | 数据 Junction |
+|------|------|---------------|
+| **Cursor** | `D:\Apps\Cursor` | `%APPDATA%\Cursor` → `E:\Cache\Cursor\Roaming` |
+| **Codex** | `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin` | `%USERPROFILE%\.codex` → `E:\Data\codex` |
+| **Claude Code** | WinGet 或 `%USERPROFILE%\.local\bin` | `%USERPROFILE%\.claude` → `E:\Data\claude` |
 
 | 工具 | 场景 |
 |------|------|
@@ -2093,10 +2201,11 @@ GitHub：https://github.com/farion1231/cc-switch
 | 程序（MSI 安装） | `D:\Apps\Utilities\CC-Switch` |
 | 程序（便携版） | `D:\Portable\Sys\CC-Switch` |
 | 自身数据 | 应用数据目录（SQLite，体积小） |
-| 写入 Claude 配置 | `%USERPROFILE%\.claude\` 或 `E:\Data\claude\`（`CLAUDE_CONFIG_DIR`） |
-| 写入 Codex 配置 | `%USERPROFILE%\.codex\` 或 `E:\Data\codex\`（`CODEX_HOME`） |
+| 写入 Claude 配置 | `%USERPROFILE%\.claude\`（Junction 后实际在 `E:\Data\claude\`） |
+| 写入 Codex 配置 | `%USERPROFILE%\.codex\`（Junction 后实际在 `E:\Data\codex\`） |
 
-> 若已设 `CLAUDE_CONFIG_DIR` / `CODEX_HOME`，CC Switch 仍写入对应 E 盘目录（需提前建好目录）。
+> **CC Switch 不读取 `CLAUDE_CONFIG_DIR` / `CODEX_HOME`**，只写 `%USERPROFILE%\.claude\` 和 `%USERPROFILE%\.codex\`。  
+> 配合 E 盘规划时，务必对这两个目录做 [Junction](#数据与缓存迁出-c-盘环境变量)（方式 C）。
 
 ### 前置条件
 
@@ -2109,8 +2218,11 @@ https://github.com/farion1231/cc-switch/releases
 
 | 文件 | 说明 |
 |------|------|
-| `CC-Switch-vX.X.X-Windows.msi` | 推荐，支持自动更新 |
-| `CC-Switch-vX.X.X-Windows-Portable.zip` | 便携版，解压即用 |
+| `CC-Switch-vX.X.X-Windows.msi` | **x64 电脑选这个**（Intel / AMD） |
+| `CC-Switch-vX.X.X-Windows-arm64.msi` | 仅 ARM 版 Windows 设备 |
+| `CC-Switch-vX.X.X-Windows-Portable.zip` | 便携版 |
+
+> 在「设置 → 系统 → 关于」看 **系统类型**：`基于 x64 的处理器` → 选 **Windows.msi**，不要选 arm64。
 
 ### 安装
 
@@ -2137,12 +2249,13 @@ https://github.com/farion1231/cc-switch/releases
    - **模型**：供应商支持的模型 ID
 3. 保存 → 点 **使用 / Enable**
 
-CC Switch 自动写入：
+写入位置（Junction 后均在 E 盘）：
 
-| 文件 | 内容 |
-|------|------|
-| `auth.json` | API Key |
-| `config.toml` | `model_provider`、`base_url`、`model` 等 |
+| 工具 | 文件 | 内容 |
+|------|------|------|
+| Claude Code | `settings.json` | API Key、Base URL、模型 |
+| Codex | `auth.json` | API Key |
+| Codex | `config.toml` | `model_provider`、`base_url`、`model`、沙箱等 |
 
 #### 3. 首次启动 Codex（配合 CC Switch）
 
@@ -2205,6 +2318,27 @@ codex     # 发一条消息，确认 API 通
 ```
 
 3. 切换供应商后，Codex 再 **新开终端** 验证
+
+### 如何确认在用 CC Switch 的 API
+
+**Claude Code**（Junction 后路径如下）：
+
+```powershell
+Get-Content "E:\Data\claude\settings.json"   # 应有 API 相关配置
+```
+
+**Codex**：
+
+```powershell
+Get-Content "E:\Data\codex\config.toml"        # model_provider = "custom"、base_url 为你的代理
+Get-Content "E:\Data\codex\auth.json"        # 应有 OPENAI_API_KEY（勿外泄）
+```
+
+| 检查项 | 走 CC Switch API | 走 ChatGPT 订阅 |
+|--------|------------------|-----------------|
+| Codex `base_url` | 第三方代理地址 | 官方或空 |
+| Codex `auth.json` | 有 `OPENAI_API_KEY` | `auth_mode: chatgpt`、Key 为 null |
+| 供应商后台 | 有调用记录 | 走 OpenAI/ChatGPT 账单 |
 
 ---
 
@@ -2373,10 +2507,12 @@ D:\Apps\Communication\QQ
 - [ ] `flutter doctor` 无阻塞性错误
 - [ ] Cursor 已装到 `D:\Apps\Cursor`，`cursor` 命令可用
 - [ ] Cursor 缓存已通过 Junction 迁到 `E:\Cache\Cursor\Roaming` / `Local`
-- [ ] Claude Code 已装，`claude --version` 正常（国内可用 WinGet）
-- [ ] Codex 已装，`codex --version` 正常
-- [ ] Claude / Codex 数据目录在 `E:\Data\claude` / `codex`（若已配置环境变量）
-- [ ] CC Switch 已装，Claude Code / Codex 各启用一个 API Key 供应商
+- [ ] Claude Code 已装（国内可用 WinGet），`claude --version` 正常
+- [ ] Codex 已装，Path 含 `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`，`codex --version` 正常
+- [ ] Codex 沙箱为 `unelevated`（或沙箱菜单已选 2）
+- [ ] `.claude` / `.codex` 已 Junction 到 `E:\Data\claude` / `E:\Data\codex`
+- [ ] `E:\Data\claude\settings.json`、`E:\Data\codex\auth.json` 存在（CC Switch 已配置）
+- [ ] CC Switch 已装（x64 选 `Windows.msi`），Claude Code / Codex 各启用 API Key 供应商
 - [ ] `claude`、`codex` 在 `E:\Workspace` 项目里能正常对话
 - [ ] Ollama 已装（可选），模型在 `E:\AI\Models\ollama`
 - [ ] 微信 / QQ 程序在 `D:\Apps\Communication\`，聊天文件在 `E:\Data\wechat` / `qq`
@@ -2384,4 +2520,4 @@ D:\Apps\Communication\QQ
 
 ---
 
-*文档版本：2026-07-02（含 CLI 安装流程核对 / WinGet 国内安装 / API Key + CC Switch）*
+*文档版本：2026-07-02（实测校对：WinGet/Codex Path/Junction/CC Switch x64/沙箱 unelevated）*
