@@ -151,8 +151,8 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 ⑫ Android Studio（Flutter / Android 开发前置）
 ⑬ Flutter
 ⑭ Cursor（AI IDE）
-⑮ Claude Code + Codex（AI 终端 CLI）
-⑯ CC Switch（API 供应商切换）
+⑮ Claude Code + Codex（先设数据目录环境变量 → 装 CLI → 验证命令）
+⑯ CC Switch（配 API Key 供应商 → 再正式使用 CLI）
 ⑰ Ollama（本地大模型，可选）
 ⑱ 按需：Postman / Apifox ...
 ```
@@ -1578,13 +1578,52 @@ PUB_HOSTED_URL=https://pub.flutter-io.cn
 
 **处理**：用户 Path 追加 `%USERPROFILE%\.local\bin`，**新开终端**再试。
 
-### 20. Codex 装错包
+### 20. Claude Code 安装报 `ECONNREFUSED` / `Failed to fetch version from downloads.claude.ai`
+
+**原因**：国内网络常无法直连 `downloads.claude.ai`。
+
+**处理**（按顺序试）：
+
+1. **WinGet**（国内优先推荐）：
+
+```powershell
+winget install Anthropic.ClaudeCode --accept-source-agreements --accept-package-agreements
+```
+
+首次可能提示同意 `msstore` 源协议，输入 `Y`。
+
+2. **开代理后重跑官方脚本**：
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"   # 按你的代理端口改
+$env:HTTP_PROXY  = "http://127.0.0.1:7890"
+irm https://claude.ai/install.ps1 | iex
+```
+
+3. **npm 备选**（需 Node.js 22+）：
+
+```powershell
+nvm use 22
+npm install -g @anthropic-ai/claude-code --registry=https://registry.npmmirror.com
+```
+
+诊断连通性：
+
+```powershell
+curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
+```
+
+### 21. Codex 装错包
 
 **处理**：确认安装的是 `npm install -g @openai/codex`，不是 `codex`。
 
-### 21. CC Switch 切换后 API 仍不通
+### 22. Codex 首次启动逼你登录 ChatGPT，但我想用 API Key
 
-**处理**：Codex 切换后新开终端；检查 API Key、Base URL；Claude Code 可在 CC Switch 里重新点「使用」。
+**处理**：按 `Ctrl + C` 退出 → 先在 [CC Switch](#二十二cc-switch) 里为 **Codex** 添加并启用 API Key 供应商 → **新开终端**再 `codex`。若仍弹出登录界面，选 **3. Provide your own API key**。
+
+### 23. CC Switch 切换后 API 仍不通
+
+**处理**：Codex 切换后新开终端；检查 API Key、Base URL、模型名；Claude Code 可在 CC Switch 里重新点「使用」。
 
 ---
 
@@ -1761,15 +1800,23 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 > **前置**：Git（已装）；**Codex 若用 npm 安装**还需 Node.js 22+（`nvm use 22`）。  
 > **Claude Code 原生安装不需要 Node.js。**
 
-### 安装顺序
+### 推荐流程（核对版）
 
 ```
-① Git 已装好
-② Claude Code（原生安装，推荐）
-③ Codex CLI（原生安装或 npm）
-④ 验证 claude / codex 命令
-⑤ 再装 CC Switch（管理 API 配置）
+①（可选）设用户环境变量：CLAUDE_CONFIG_DIR、CODEX_HOME → E:\Data\
+② 安装 Claude Code（国内优先 WinGet）
+③ 安装 Codex CLI（原生 install.ps1 或 npm）
+④ 验证：claude --version、codex --version（此时不必完成登录）
+⑤ 安装 CC Switch
+⑥ 在 CC Switch 里分别为 Claude Code / Codex 添加 API Key 供应商并「启用」
+⑦ 新开 PowerShell，cd 到 E:\Workspace\...，运行 claude / codex 验证 API
 ```
+
+| 步骤 | 做什么 | 不要做什么 |
+|------|--------|------------|
+| 装 CLI | 只装程序，确认命令可用 | 不要在 Codex 里选 ChatGPT 登录（若打算用 API Key） |
+| 装 CC Switch | 图形界面配 Key、Base URL、模型 | CC Switch **不代替**安装 CLI |
+| 首次使用 | CC Switch 启用供应商后再 `codex` / `claude` | 不要手改 `~/.codex/config.toml`（交给 CC Switch） |
 
 ### 路径规划
 
@@ -1782,18 +1829,32 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 > 两者都会产生**会话记录、缓存、日志**，默认在 C 盘用户目录；体积通常比 Cursor 小，但重度使用会增长。  
 > 官方支持用**环境变量**迁到 E 盘（比 Cursor 的 Junction 更干净）。**用 CC Switch 管理 API 配置**，无需手改 JSON/TOML。
 
-### 账号要求
+### 账号与认证方式
 
-| 工具 | 登录方式 |
-|------|----------|
-| Claude Code | Anthropic 账号 / Claude 订阅 / Console API Key |
-| Codex | ChatGPT Plus/Pro/Business 等订阅，或 OpenAI API Key |
+| 工具 | 认证方式 | 本文推荐 |
+|------|----------|----------|
+| Claude Code | Anthropic 账号 / Claude 订阅 / API Key | **API Key + CC Switch** |
+| Codex | ChatGPT 订阅登录 / API Key | **API Key + CC Switch** |
+
+> 有 ChatGPT 订阅也可在 Codex 里选「Sign in with ChatGPT」；本文按 **API Key 统一管理** 写法。
 
 ---
 
 ### Claude Code 安装
 
-**官方推荐：原生安装（无需 Node.js，后台自动更新）**
+#### 国内网络：优先 WinGet
+
+国内直连 `downloads.claude.ai` 常失败（`ECONNREFUSED`），**优先用 WinGet**：
+
+```powershell
+winget install Anthropic.ClaudeCode --accept-source-agreements --accept-package-agreements
+```
+
+- 首次可能提示同意 `msstore` 源协议 → 输入 **`Y`**
+- 包 ID 是 **`Anthropic.ClaudeCode`**（CLI），不是桌面 GUI 包
+- WinGet **不自动更新**，升级：`winget upgrade Anthropic.ClaudeCode`
+
+#### 官方脚本（网络畅通时）
 
 **普通 PowerShell**：
 
@@ -1807,21 +1868,30 @@ irm https://claude.ai/install.ps1 | iex
 curl -fsSL https://claude.ai/install.cmd -o install.cmd && install.cmd && del install.cmd
 ```
 
-**WinGet（备选，不自动更新）**：
+**有代理时**（先设代理再执行官方脚本）：
 
 ```powershell
-winget install Anthropic.ClaudeCode
-# 升级：winget upgrade Anthropic.ClaudeCode
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"   # 按实际端口改
+$env:HTTP_PROXY  = "http://127.0.0.1:7890"
+irm https://claude.ai/install.ps1 | iex
 ```
 
-**npm 安装（备选，需 Node.js 18+）**
+#### npm 安装（备选，需 Node.js 18+）
 
 ```powershell
 nvm use 22
-npm install -g @anthropic-ai/claude-code
+npm install -g @anthropic-ai/claude-code --registry=https://registry.npmmirror.com
 ```
 
 > 若曾用 npm 装过，建议先迁到原生：`claude install`，再 `npm uninstall -g @anthropic-ai/claude-code`，避免两套二进制冲突。
+
+#### 安装失败诊断
+
+```powershell
+curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
+```
+
+无 `HTTP/2 200` / `HTTP/1.1 200` → 网络被挡，用 WinGet 或代理。
 
 ### Claude Code 用户 Path 追加
 
@@ -1833,16 +1903,14 @@ npm install -g @anthropic-ai/claude-code
 
 ### Claude Code 验证
 
-**关掉终端，重新打开**，然后：
+**关掉终端，重新打开**：
 
 ```powershell
 claude --version
-claude doctor    # 可选，检查安装状态
-claude
+claude doctor    # 可选
 ```
 
-首次运行按提示登录 Anthropic 账号。
-
+> 此阶段只需确认**命令可用**；API Key 在下一步 [CC Switch](#二十二cc-switch) 配置后再 `claude` 正式使用。  
 > 若提示 `'claude' 不是内部命令`：检查 Path 是否含 `%USERPROFILE%\.local\bin`，新开终端再试。  
 > Windows 上建议已装 **Git for Windows**，Claude Code 才能用 Bash 工具；否则回退到 PowerShell。
 
@@ -1870,11 +1938,27 @@ npm install -g @openai/codex
 > 包名必须是 **`@openai/codex`**，不是 `codex`（后者是无关旧包）。  
 > npm 全局包装到 `E:\Envs\Node\npm-global`，需确保用户 Path 已含该目录。
 
+### Codex 验证（仅确认安装）
+
+**新开 PowerShell**：
+
+```powershell
+codex --version
+```
+
+> 只需确认命令可用。**不要在此完成 ChatGPT 登录**（若打算用 API Key + CC Switch）。  
+> 若已误进入登录界面，按 **`Ctrl + C`** 退出，先去 CC Switch 配供应商。
+
 ### Codex 配置（Windows 沙箱）
 
-若已设 `CODEX_HOME=E:\Data\codex`，配置文件路径为 `E:\Data\codex\config.toml`；否则为 `%USERPROFILE%\.codex\config.toml`。
+配置文件路径（设了 `CODEX_HOME` 时用 E 盘路径）：
 
-首次运行前创建或编辑该文件：
+```text
+E:\Data\codex\config.toml          # 已设 CODEX_HOME
+%USERPROFILE%\.codex\config.toml   # 默认
+```
+
+首次运行前创建或编辑，加入沙箱配置：
 
 ```toml
 [windows]
@@ -1887,18 +1971,8 @@ sandbox = "elevated"   # 推荐，首次需管理员批准 UAC
 | `elevated` | 更强隔离，推荐；首次会弹 UAC，需点允许 |
 | `unelevated` | 弱一些，但公司管控电脑进不了 elevated 时可用 |
 
-> 项目目录建议放在 `E:\Workspace\...`，在 PowerShell 里 `cd` 进去后运行 `codex`。
-
-### Codex 验证
-
-**新开 PowerShell**：
-
-```powershell
-codex --version
-codex
-```
-
-首次运行通过浏览器登录 ChatGPT，或配置 API Key。
+> 项目目录建议放在 `E:\Workspace\...`，在 PowerShell 里 `cd` 进去后运行 `codex`。  
+> API Key、Base URL、模型名由 **CC Switch 写入**，不要与沙箱配置混在一起手改。
 
 ### 数据与缓存迁出 C 盘（环境变量）
 
@@ -1971,11 +2045,14 @@ E:\Data\codex\attachments\
 
 | 现象 | 处理 |
 |------|------|
+| Claude 安装 `ECONNREFUSED downloads.claude.ai` | 国内优先 **WinGet**；或开代理后重跑 `irm` 脚本；或 npm + npmmirror |
+| WinGet 提示同意 msstore 协议 | 输入 **`Y`** 继续 |
 | `claude` 找不到 | 用户 Path 加 `%USERPROFILE%\.local\bin`，新开终端 |
 | `codex` 找不到（npm 装） | 确认 Path 含 `E:\Envs\Node\npm-global`，执行 `npm bin -g` 核对 |
-| `Missing optional dependency @openai/codex-win32-x64` | 卸载重装：`npm uninstall -g @openai/codex` 再 `npm install -g @openai/codex@latest`；或改用原生安装 |
+| `Missing optional dependency @openai/codex-win32-x64` | 卸载重装或改用原生安装 |
+| Codex 弹出 ChatGPT 登录界面 | `Ctrl+C` 退出 → CC Switch 配好 API Key → 新开终端再 `codex` |
 | Codex elevated 沙箱失败 | 先试 `sandbox = "unelevated"`；公司电脑找 IT 放行 |
-| 两者都想换 API 供应商 | 装 [CC Switch](#二十二cc-switch)，不要手改配置文件 |
+| 换 API 供应商 | 用 [CC Switch](#二十二cc-switch)，不要手改配置文件 |
 | C 盘被 CLI 数据占满 | 设 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` 到 `E:\Data\`，见上文 |
 
 ---
@@ -2016,12 +2093,15 @@ GitHub：https://github.com/farion1231/cc-switch
 | 程序（MSI 安装） | `D:\Apps\Utilities\CC-Switch` |
 | 程序（便携版） | `D:\Portable\Sys\CC-Switch` |
 | 自身数据 | 应用数据目录（SQLite，体积小） |
-| 管理的 CLI 配置 | 写入 `%USERPROFILE%\.claude\`、`%USERPROFILE%\.codex\` 等 |
+| 写入 Claude 配置 | `%USERPROFILE%\.claude\` 或 `E:\Data\claude\`（`CLAUDE_CONFIG_DIR`） |
+| 写入 Codex 配置 | `%USERPROFILE%\.codex\` 或 `E:\Data\codex\`（`CODEX_HOME`） |
+
+> 若已设 `CLAUDE_CONFIG_DIR` / `CODEX_HOME`，CC Switch 仍写入对应 E 盘目录（需提前建好目录）。
 
 ### 前置条件
 
 1. **先手动装好** Claude Code、Codex 等 CLI（CC Switch **不负责安装** CLI，Windows 版已禁用一键安装）
-2. Node.js 18+ 已装（nvm use 22）
+2. `claude --version`、`codex --version` 已能跑通（**不必先完成登录**）
 
 ### 下载
 
@@ -2038,41 +2118,93 @@ https://github.com/farion1231/cc-switch/releases
 
 **便携版**：解压到 `D:\Portable\Sys\CC-Switch`，运行 `CC-Switch.exe`
 
-### 使用流程
+### 推荐配置流程（API Key 用户）
 
-1. 打开 CC Switch
-2. 顶部选择要管理的工具（**Claude Code** 或 **Codex**）
-3. 点 **添加供应商**，填写：
-   - 名称（如 `官方`、`DeepSeek`、`第三方代理`）
-   - API Key
-   - Base URL（若用镜像/代理）
-   - 模型名
-4. 选中供应商 → 点 **使用 / Enable**
-5. CC Switch 自动写入对应配置文件
+#### 1. 配置 Claude Code 供应商
 
-> **Claude Code** 支持热切换，多数情况**不用重启终端**。Codex 切换后建议**新开终端**。
+1. 打开 CC Switch → 顶部选 **Claude Code**
+2. **添加供应商** → 填名称、API Key、Base URL（第三方代理必填）、模型
+3. 保存 → 点 **使用 / Enable**
+
+写入示例位置：`E:\Data\claude\settings.json`（或默认 `%USERPROFILE%\.claude\`）
+
+#### 2. 配置 Codex 供应商
+
+1. 顶部切换到 **Codex**（与 Claude Code **分开配置**）
+2. **添加供应商** → 填：
+   - **API Key**：`sk-...`
+   - **Base URL**：官方 `https://api.openai.com/v1` 或供应商文档给的地址
+   - **模型**：供应商支持的模型 ID
+3. 保存 → 点 **使用 / Enable**
+
+CC Switch 自动写入：
+
+| 文件 | 内容 |
+|------|------|
+| `auth.json` | API Key |
+| `config.toml` | `model_provider`、`base_url`、`model` 等 |
+
+#### 3. 首次启动 Codex（配合 CC Switch）
+
+```powershell
+# 新开 PowerShell（CC Switch 启用供应商之后）
+cd E:\Workspace\Sandbox
+codex
+```
+
+若仍出现登录菜单：
+
+```text
+> 1. Sign in with ChatGPT
+> 2. Sign in with Device Code
+> 3. Provide your own API key
+```
+
+- **API Key 用户**：选 **`3`**，或 `Ctrl+C` 退出后确认 CC Switch 已启用供应商再试
+- **不要选 1**（除非你有 ChatGPT 订阅且想走订阅额度）
+
+#### 4. 首次启动 Claude Code
+
+```powershell
+cd E:\Workspace\Sandbox
+claude
+```
+
+按 CC Switch 已写入的配置连接 API；若提示登录，检查 CC Switch 里 Claude Code 供应商是否已 **启用**。
+
+### 使用注意
+
+| 项 | 说明 |
+|----|------|
+| 切换供应商后 | **Codex 必须新开终端**；Claude Code 多数情况可热切换 |
+| 纯 API Key 计费 | **不要**开「保留官方 ChatGPT 登录」类选项（避免计费走 ChatGPT 订阅而非 API） |
+| 手改配置 | 交给 CC Switch，避免与 GUI 写入冲突 |
+| 第三方代理 | Base URL、模型名必须与供应商文档一致；Codex 需 **Responses API** 兼容端点 |
 
 ### 与 Claude Code / Codex 的关系
 
 ```
-你手动安装 Claude Code、Codex
+安装 Claude Code、Codex（只验证命令）
          ↓
-CC Switch 管理它们的 API 配置（不写代码，点 GUI）
+安装 CC Switch → 分别为两者添加 API Key 供应商并「启用」
          ↓
-终端里正常运行 claude / codex 命令
+新开终端 → cd E:\Workspace\... → claude / codex
 ```
 
 ### 验证
 
-1. 在 CC Switch 里添加并启用一个供应商
-2. 新开 PowerShell：
+1. CC Switch 里 Claude Code、Codex 各启用一个供应商
+2. **新开 PowerShell**：
 
 ```powershell
+cd E:\Workspace\Sandbox
 claude --version
 codex --version
+claude    # 发一条消息，确认 API 通
+codex     # 发一条消息，确认 API 通
 ```
 
-3. 运行 `claude` 或 `codex`，确认能连上 API
+3. 切换供应商后，Codex 再 **新开终端** 验证
 
 ---
 
@@ -2241,14 +2373,15 @@ D:\Apps\Communication\QQ
 - [ ] `flutter doctor` 无阻塞性错误
 - [ ] Cursor 已装到 `D:\Apps\Cursor`，`cursor` 命令可用
 - [ ] Cursor 缓存已通过 Junction 迁到 `E:\Cache\Cursor\Roaming` / `Local`
-- [ ] Claude Code 已装，`claude --version` 正常
+- [ ] Claude Code 已装，`claude --version` 正常（国内可用 WinGet）
 - [ ] Codex 已装，`codex --version` 正常
 - [ ] Claude / Codex 数据目录在 `E:\Data\claude` / `codex`（若已配置环境变量）
-- [ ] CC Switch 已装，可切换 API 供应商
+- [ ] CC Switch 已装，Claude Code / Codex 各启用一个 API Key 供应商
+- [ ] `claude`、`codex` 在 `E:\Workspace` 项目里能正常对话
 - [ ] Ollama 已装（可选），模型在 `E:\AI\Models\ollama`
 - [ ] 微信 / QQ 程序在 `D:\Apps\Communication\`，聊天文件在 `E:\Data\wechat` / `qq`
 - [ ] 在 `E:\Workspace` 下成功打开并运行过一个项目
 
 ---
 
-*文档版本：2026-07-02（含 Cursor Junction / CLI 数据迁盘 / 微信 QQ / Claude Code / Codex / CC Switch / Ollama）*
+*文档版本：2026-07-02（含 CLI 安装流程核对 / WinGet 国内安装 / API Key + CC Switch）*
