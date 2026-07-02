@@ -155,7 +155,7 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 
 ```
 ① 目录结构（D/E 盘）
-② Git
+② Git（可选：Fork 图形客户端，见 [Git 章节](#fork可选git-图形客户端)）
 ③ JDK 21 + JDK 17
 ④ Maven
 ⑤ IntelliJ IDEA
@@ -247,6 +247,89 @@ git config --global user.name
 echo "[$env:TEMP]"
 where.exe git
 ```
+
+
+
+### Fork（可选：Git 图形客户端）
+
+> 与 Cursor / IDEA 内置 Git **互补**：适合可视化 diff、交互式 rebase、解决合并冲突、浏览历史。  
+> 程序本体因 Velopack 自动更新机制**只能装在** `%LOCALAPPDATA%\Fork`（与 Codex 类似，安装器**无路径选项**）。  
+> **必做**：在 Fork 里指向已装的 `D:\Portable\VCS\Git`，避免 Fork 再下载一份约 **400MB** 的 bundled Git 到 C 盘。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| Fork 程序 | `%LOCALAPPDATA%\Fork`（无法改到 D 盘，属正常） |
+| 复用 Git | `D:\Portable\VCS\Git\cmd\git.exe` |
+| 安装包归档 | `D:\Packages\2026\Dev\` |
+| 仓库源码 | `E:\Workspace\...`（在 Fork 里打开/克隆到此） |
+
+#### 前置条件
+
+- 本章 Git 已装好，`git --version`、`git config --global user.name` 正常
+
+#### 下载与安装
+
+1. 打开 [https://git-fork.com/](https://git-fork.com/) → **Download Fork for Windows**
+2. 安装包保存到 `D:\Packages\2026\Dev\`
+3. 运行安装器，按向导完成（**没有**自定义安装路径）
+4. 从开始菜单或 `%LOCALAPPDATA%\Fork\Fork.exe` 启动
+
+> Fork 有免费试用期，之后需购买授权；试用期内功能完整，足够验证环境。
+
+#### 配置：使用本机 Git（必做）
+
+**File → Preferences → Git → Git Instance** 选 **Custom**，路径填：
+
+```text
+D:\Portable\VCS\Git\cmd\git.exe
+```
+
+或直接编辑 `%LOCALAPPDATA%\Fork\settings.json`（`CustomGitInstancePath` 必须用**正斜杠**）：
+
+```json
+"CustomGitInstancePath": "D:/Portable/VCS/Git/cmd/git.exe"
+```
+
+保存后**完全退出 Fork 再打开**。配置成功后：
+
+- Fork 与终端 `git`、IDEA、Cursor **共用** `E:\Config\git\.gitconfig`
+- 可删除 `%LOCALAPPDATA%\Fork\gitInstance\` 释放 C 盘（约 400MB）；若 Fork 更新后又拉回，改回 Custom Git 后再删即可
+
+#### 首次使用建议
+
+1. **File → Open Repository** → 选 `E:\Workspace\Personal\` 或具体项目目录  
+2. **File → Clone** 时 **Directory** 也指向 `E:\Workspace\...`  
+3. 日常写代码仍用 **Cursor**；提交、分支、rebase、看历史用 **Fork**
+
+| 场景 | 工具 |
+|------|------|
+| 编码 + AI 辅助 | Cursor |
+| Java / 后端工程 | IDEA |
+| 可视化 Git 操作 | Fork |
+| 脚本化 / CI 同款命令 | 终端 `git` |
+
+#### 验证
+
+**普通 PowerShell**（`PS E:\Workspace\...>`，不要用 `C:\WINDOWS\system32` 管理员窗口）：
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\Fork\Fork.exe"
+git --version
+git config --global --get user.name
+```
+
+在 Fork 内：**Preferences → Git**，确认 Git Instance 为 `D:\Portable\VCS\Git\cmd\git.exe`；打开 `E:\Workspace` 下任意已有仓库，能正常显示提交历史即可。
+
+#### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| C 盘出现 `...\Fork\gitInstance\` 且很大 | Preferences 改 Custom Git；退出 Fork 后删 `gitInstance` 文件夹 |
+| Fork 打不开 / 无响应 | 杀毒软件可能拦截 `%LOCALAPPDATA%\Fork`；加白名单后重装 |
+| 与 Cursor 内置 Git 冲突？ | 不冲突；各用各的界面，底层同一套 `git.exe` 与 `.gitconfig` |
+| `error launching git: filename too long` | **设置 → 系统 → 关于 → 高级系统设置** 勾选启用 Win32 长路径；并确认用 Custom Git |
 
 ---
 
@@ -2898,6 +2981,7 @@ Base URL: http://localhost:11434/v1
 
 | 软件               | 安装位置                                    | 何时装       |
 | ---------------- | --------------------------------------- | --------- |
+| Fork（Git 客户端）   | `%LOCALAPPDATA%\Fork`（程序）；Git 复用 `D:\Portable\VCS\Git` | Git 装好后，需要可视化 Git 时 |
 | 微信 / QQ          | `D:\Apps\Communication\`                | 日常通讯      |
 | Postman / Apifox | `D:\Portable\API\`                      | 接口调试      |
 | DBeaver          | `D:\Portable\DB\` 或 `D:\Apps\Database\` | 开源数据库客户端  |
@@ -3107,6 +3191,7 @@ D:\Apps\Communication\QQ
 
 - [ ] D/E 盘目录结构已就绪
 - [ ] Git 可用，`git config` 已配置
+- [ ] Fork 已装（可选），Preferences → Git 指向 `D:\Portable\VCS\Git\cmd\git.exe`，`gitInstance` 已删或不存在
 - [ ] JDK 21 / 17 已装，`java -version` 正常
 - [ ] Maven 可用，`mvn -version` 正常
 - [ ] IDEA 已装，缓存/config 在 E 盘
@@ -3144,4 +3229,4 @@ D:\Apps\Communication\QQ
 
 ---
 
-*文档版本：2026-07-02（含 Python 安装实测 / WinGet/Codex/Junction/CC Switch）*
+*文档版本：2026-07-02（含 Fork / Python 实测 / WinGet/Codex/Junction/CC Switch）*
