@@ -54,8 +54,12 @@ D:\
 │   ├── JetBrains\     # IDEA、Android Studio
 │   ├── Database\      # Navicat
 │   ├── Communication\ # 微信、QQ、钉钉、ToDesk 等
-│   └── Utilities\     # 7-Zip、Everything
-├── Portable\          # 绿色/便携工具（Git 等）
+│   ├── Games\         # Steam 客户端
+│   └── Utilities\     # 7-Zip、Everything、Termius 等
+├── Portable\          # 绿色/便携工具（Git、Clash、OBS 等）
+│   ├── VCS\           # Git、Fork 相关
+│   ├── Network\       # Clash Verge Rev 便携版
+│   └── Media\         # OBS Studio 便携版
 ├── Packages\          # 安装包归档
 │   └── 2026\
 │       ├── Dev\
@@ -86,6 +90,7 @@ E:\
 ├── Data\              # 持久化数据（MySQL、Redis、微信/QQ 聊天记录等）
 │   ├── wechat\        # 微信文件管理目录
 │   ├── qq\            # QQ 文件/缓存目录
+│   ├── obs\           # OBS 录像/输出（可选）
 │   ├── claude\        # Claude Code 数据（CLAUDE_CONFIG_DIR）
 │   └── codex\         # Codex 数据（CODEX_HOME）
 ├── Cache\             # 构建与包管理缓存（Gradle、pub、pip、AndroidStudio、Cursor 等）
@@ -172,7 +177,7 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 ⑯ CC Switch（配 API Key 供应商 → 再正式使用 CLI）
 ⑰ Ollama（本地大模型，可选）
 ⑱ Python（按需：装 E 盘 + pip 缓存 + Path）
-⑲ 按需：Postman / Apifox / ToDesk / Go ...
+⑲ 按需：Termius / OBS / Clash / Steam / Postman / Apifox / Go ...
 ```
 
 ---
@@ -2983,6 +2988,10 @@ Base URL: http://localhost:11434/v1
 | ---------------- | --------------------------------------- | --------- |
 | Fork（Git 客户端）   | `%LOCALAPPDATA%\Fork`（程序）；Git 复用 `D:\Portable\VCS\Git` | Git 装好后，需要可视化 Git 时 |
 | ToDesk（远程桌面）   | `D:\Apps\Communication\ToDesk`          | 需要远程连接本机或其它设备时 |
+| Termius（SSH）     | `D:\Apps\Utilities\Termius`             | 常连服务器、要图形化 SSH 时 |
+| OBS Studio       | `D:\Portable\Media\OBS-Studio`（便携推荐） | 录屏、直播、会议录制 |
+| Clash Verge Rev  | `D:\Portable\Network\Clash-Verge-Rev`（便携推荐） | 需要系统代理 / TUN 时 |
+| Steam            | `D:\Apps\Games\Steam`；游戏库 `D:\Apps\Games\SteamLibrary` | 玩游戏、Steam 下载 |
 | 微信 / QQ          | `D:\Apps\Communication\`                | 日常通讯      |
 | Postman / Apifox | `D:\Portable\API\`                      | 接口调试      |
 | DBeaver          | `D:\Portable\DB\` 或 `D:\Apps\Database\` | 开源数据库客户端  |
@@ -3238,6 +3247,230 @@ Get-Service -Name "*todesk*" -ErrorAction SilentlyContinue | Select-Object Name,
 
 
 
+### Termius（SSH 客户端）
+
+> 图形化 SSH / SFTP，连云服务器、家里 NAS 比纯终端省事。程序可装 **D 盘**；账号同步后本地缓存多在 `%APPDATA%\Termius\`，体积小，**无需 Junction**。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| Termius 程序 | `D:\Apps\Utilities\Termius` |
+| 本地配置（自动） | `%APPDATA%\Termius\` |
+| 安装包 | `D:\Packages\2026\Tools\` |
+
+#### 安装前建目录
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Apps\Utilities\Termius" -Force
+```
+
+#### 下载与安装
+
+1. 官网：[https://termius.com/free-download](https://termius.com/free-download) 或 [https://termi.us/win](https://termi.us/win)
+2. 安装包保存到 `D:\Packages\2026\Tools\`
+3. **方式 A（图形界面）**：运行安装器，若有路径选项，改为 `D:\Apps\Utilities\Termius`
+4. **方式 B（静默指定路径）**：管理员 CMD 进入安装包目录后执行（`/D=` 必须在最后，路径勿加尾部 `\`）：
+
+```cmd
+Termius.exe /S /D=D:\Apps\Utilities\Termius
+```
+
+5. 登录 Termius 账号（免费版够用；团队功能需订阅）
+
+> **勿装 Microsoft Store 版**（路径在 `WindowsApps`，难迁移）。
+
+#### 验证
+
+```powershell
+Test-Path "D:\Apps\Utilities\Termius\Termius.exe"
+```
+
+打开 Termius，新建 SSH 连接，能连上一台 Linux 主机即正常。
+
+#### 与开发环境
+
+| 场景 | 工具 |
+|------|------|
+| 本机写代码 | Cursor / IDEA |
+| 连服务器跑命令 | Termius 或 Cursor 内置终端 + `ssh` |
+| 密钥 | 可用 Termius 管理，或与 `E:\Secrets\ssh\` 自建密钥配合 |
+
+
+
+
+### OBS Studio（录屏 / 直播）
+
+> 录屏、直播、会议录制。**推荐便携版 + portable 模式**：程序与配置都在 D 盘，录像输出指到 E 盘。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| OBS 程序（便携） | `D:\Portable\Media\OBS-Studio` |
+| 场景/配置（便携模式） | 同上目录内 `config\` |
+| 录像 / 回放输出 | `E:\Data\obs\recordings` |
+| 安装包 | `D:\Packages\2026\Tools\` |
+
+#### 安装前建目录
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Portable\Media\OBS-Studio" -Force
+New-Item -ItemType Directory -Path "E:\Data\obs\recordings" -Force
+```
+
+#### 下载与安装（便携版，推荐）
+
+1. 官网：[https://obsproject.com/download](https://obsproject.com/download) → **Windows** → 选 **ZIP**（Portable），不要只下 Installer 若你想配置全在 D 盘
+2. 或 GitHub Releases：[https://github.com/obsproject/obs-studio/releases](https://github.com/obsproject/obs-studio/releases) → `OBS-Studio-x.x.x-Windows-x64.zip`
+3. 解压到 `D:\Portable\Media\OBS-Studio`（解压后应能看到 `bin\64bit\obs64.exe`）
+4. 在 `D:\Portable\Media\OBS-Studio` **根目录**新建空文件 `portable_mode.txt`（启用便携模式，配置不写 `%APPDATA%\obs-studio`）
+5. 首次运行：`D:\Portable\Media\OBS-Studio\bin\64bit\obs64.exe`
+6. **设置 → 输出 → 录像路径** → `E:\Data\obs\recordings`
+7. 可建桌面快捷方式指向 `obs64.exe`
+
+#### 安装版（可选）
+
+若坚持用安装器，管理员 CMD 可静默装到 D 盘：
+
+```cmd
+OBS-Studio-x.x.x-Windows-x64-Installer.exe /S /D=D:\Apps\Media\OBS-Studio
+```
+
+此时用户配置仍在 `%APPDATA%\obs-studio\`，C 盘会多一份配置；**更推荐上面的便携版**。
+
+#### 验证
+
+```powershell
+Test-Path "D:\Portable\Media\OBS-Studio\bin\64bit\obs64.exe"
+Test-Path "D:\Portable\Media\OBS-Studio\portable_mode.txt"
+```
+
+OBS 内试录 10 秒，确认文件出现在 `E:\Data\obs\recordings`。
+
+#### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| 游戏采集黑屏 | 以管理员运行 OBS；或改用窗口采集 / 显示器采集 |
+| UWP 游戏采不到 | 非 Program Files 安装时，给 OBS 目录加 `ALL APPLICATION PACKAGES` 权限（见 OBS 官方文档） |
+| 配置丢了的错觉 | 确认根目录有 `portable_mode.txt`，且从同一 `obs64.exe` 启动 |
+
+
+
+
+### Clash Verge Rev（代理客户端）
+
+> Windows 上维护中的 Clash 图形客户端（原 Clash for Windows 已停更）。**推荐便携版**装 D 盘，订阅与配置在程序目录内 `.config\`，便于备份。  
+> 订阅链接属敏感信息，自行保管，建议备份到 `E:\Secrets\` 或 `E:\Config\clash-verge\`。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| 程序（便携） | `D:\Portable\Network\Clash-Verge-Rev` |
+| 配置（便携） | `D:\Portable\Network\Clash-Verge-Rev\.config\io.github.clash-verge-rev.clash-verge-rev\` |
+| 安装包 | `D:\Packages\2026\Tools\` |
+
+#### 安装前建目录
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Portable\Network\Clash-Verge-Rev" -Force
+```
+
+#### 下载与安装（便携版，推荐）
+
+1. GitHub：[https://github.com/clash-verge-rev/clash-verge-rev/releases](https://github.com/clash-verge-rev/clash-verge-rev/releases)
+2. 下载 **`Clash.Verge_x64_portable.zip`**（便携版，不要与安装版混用同目录）
+3. 解压到 `D:\Portable\Network\Clash-Verge-Rev`
+4. 运行 `Clash Verge.exe`（或目录内主程序）
+5. **设置** 中确认 **应用目录（App Directory）** 在便携目录下的 `.config\...`（设置里可「打开应用目录」核对）
+6. **配置订阅**：配置 / Profiles → 导入机场订阅 URL 或本地 YAML
+7. 常用选项（按需）：
+   - **系统代理（System Proxy）**：让浏览器等走代理
+   - **TUN 模式**：全局接管（需管理员；与部分 VPN/公司网络可能冲突）
+   - **开机自启**：按需
+
+> 安装版默认配置在 `%APPDATA%\io.github.clash-verge-rev.clash-verge-rev\`（C 盘 Roaming）。若已用安装版想迁 D 盘：设置里打开应用目录 → 整夹复制到便携版 `.config\` 对应位置后改用便携包。
+
+#### 与开发环境
+
+| 项 | 说明 |
+|----|------|
+| 终端 `git` / `npm` | 开系统代理后多数能直连；若不行，在 Clash 规则里为 `github.com` 等设代理，或临时设用户变量 `HTTP_PROXY` / `HTTPS_PROXY` 为 `http://127.0.0.1:<混合端口>`（端口以软件 **设置** 为准，常见 7897） |
+| Docker | TUN 与 Docker 网络偶发冲突；出问题先关 TUN，仅用系统代理 |
+| Claude / Codex | 走系统代理或规则分流即可，无需单独为 CLI 改安装路径 |
+
+#### 验证
+
+打开 Clash Verge → **设置 → 应用目录** 确认在 D 盘 → 选节点 → **系统代理** 开启 → 浏览器能打开 [https://www.google.com](https://www.google.com)（或你常用的检查站点）即正常。
+
+#### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| 需要 WebView2 | 按提示安装 [Microsoft Edge WebView2](https://developer.microsoft.com/microsoft-edge/webview2/) |
+| 升级后配置没了 | 升级前在设置里打开应用目录备份；大版本可先卸再装并保留配置夹 |
+| 端口被占用 | 设置里改 **混合端口（Mixed Port）** |
+
+
+
+
+### Steam（游戏平台）
+
+> 客户端装 **D 盘**；**游戏库**单独建在 D 盘并设为默认，避免游戏堆满 C 盘。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| Steam 客户端 | `D:\Apps\Games\Steam` |
+| 游戏库（默认） | `D:\Apps\Games\SteamLibrary` |
+| 安装包 | `D:\Packages\2026\Tools\` |
+
+#### 安装前建目录
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Apps\Games\Steam" -Force
+New-Item -ItemType Directory -Path "D:\Apps\Games\SteamLibrary" -Force
+```
+
+#### 下载与安装
+
+1. 官网：[https://store.steampowered.com/about/](https://store.steampowered.com/about/) → 下载 `SteamSetup.exe`
+2. 保存到 `D:\Packages\2026\Tools\`
+3. 运行安装器，**安装路径**改为：
+
+```text
+D:\Apps\Games\Steam
+```
+
+4. 安装完成后登录 Steam 账号
+5. **Steam → 设置 → 存储**：
+   - 点 **+** 或 **添加驱动器**
+   - 选 D 盘，或 **让我选择其他位置** → `D:\Apps\Games\SteamLibrary`
+   - 将该库 **设为默认**（三点菜单 → 设为默认）
+6. 以后新游戏默认装到 `D:\Apps\Games\SteamLibrary\steamapps\`
+
+#### 已有游戏迁到 D 盘
+
+**Steam → 设置 → 存储** → 选中游戏 → **转移**，目标选 `D:\Apps\Games\SteamLibrary`（不要手拷文件夹，用内置迁移）。
+
+#### 验证
+
+```powershell
+Test-Path "D:\Apps\Games\Steam\steam.exe"
+```
+
+Steam 设置里默认存储为 D 盘库；下载一个小游戏或已装游戏，确认路径在 `D:\Apps\Games\SteamLibrary\steamapps\common\`。
+
+#### 与开发环境
+
+Steam 与 Git / Cursor / Docker 无冲突；注意游戏盘预留足够空间（大型 3A 单游戏可达 100GB+）。
+
+
+
+
 ### 后续环境变量（按需添加，均为用户变量）
 
 
@@ -3248,6 +3481,8 @@ Get-Service -Name "*todesk*" -ErrorAction SilentlyContinue | Select-Object Name,
 | `PIP_CACHE_DIR`     | `E:\Cache\pip`      | Python 开发       |
 | `CLAUDE_CONFIG_DIR` | `E:\Data\claude`    | 装 Claude Code 前 |
 | `CODEX_HOME`        | `E:\Data\codex`     | 装 Codex 前       |
+| `HTTP_PROXY`        | `http://127.0.0.1:7897` | 仅终端不走系统代理时（端口以 Clash 设置为准） |
+| `HTTPS_PROXY`       | `http://127.0.0.1:7897` | 同上              |
 
 
 > `OLLAMA_MODELS` 已移至 [Ollama 章节](#二十三本地-ai-模型ollama)。
@@ -3295,8 +3530,12 @@ Get-Service -Name "*todesk*" -ErrorAction SilentlyContinue | Select-Object Name,
 - [ ] 已关闭 Windows 应用执行别名中的 `python.exe` / `python3.exe`
 - [ ] 微信 / QQ 程序在 `D:\Apps\Communication\`，聊天文件在 `E:\Data\wechat` / `qq`
 - [ ] ToDesk 在 `D:\Apps\Communication\ToDesk`，能显示设备代码并正常远控（可选）
+- [ ] Termius 在 `D:\Apps\Utilities\Termius`，SSH 可连服务器（可选）
+- [ ] OBS 便携版在 `D:\Portable\Media\OBS-Studio`，有 `portable_mode.txt`，录像在 `E:\Data\obs\recordings`（可选）
+- [ ] Clash Verge Rev 便携版在 `D:\Portable\Network\Clash-Verge-Rev`，应用目录在 D 盘（可选）
+- [ ] Steam 客户端在 `D:\Apps\Games\Steam`，默认游戏库为 `D:\Apps\Games\SteamLibrary`（可选）
 - [ ] 在 `E:\Workspace` 下成功打开并运行过一个项目
 
 ---
 
-*文档版本：2026-07-02（含 Fork / ToDesk / Python 实测 / WinGet/Codex/Junction/CC Switch）*
+*文档版本：2026-07-02（含 Termius/OBS/Clash/Steam、Fork、ToDesk、Python、WinGet/Codex/Junction/CC Switch）*
