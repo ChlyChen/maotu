@@ -78,7 +78,9 @@ E:\
 ├── Services\          # 本地服务（MySQL、Redis 等）
 ├── Data\              # 持久化数据（MySQL、Redis、微信/QQ 聊天记录等）
 │   ├── wechat\        # 微信文件管理目录
-│   └── qq\            # QQ 文件/缓存目录
+│   ├── qq\            # QQ 文件/缓存目录
+│   ├── claude\        # Claude Code 数据（CLAUDE_CONFIG_DIR）
+│   └── codex\         # Codex 数据（CODEX_HOME）
 ├── Cache\             # 构建与包管理缓存（Gradle、pub、AndroidStudio、Cursor 等）
 │   └── Cursor\        # Roaming / Local（Junction 目标目录）
 ├── Containers\        # Docker / WSL
@@ -1382,6 +1384,8 @@ IDEA 中 **Settings → Languages & Frameworks → Flutter**：
 | `FLUTTER_STORAGE_BASE_URL` | `https://storage.flutter-io.cn`（国内可选） |
 | `PUB_HOSTED_URL` | `https://pub.flutter-io.cn`（国内可选） |
 | `OLLAMA_MODELS` | `E:\AI\Models\ollama` |
+| `CLAUDE_CONFIG_DIR` | `E:\Data\claude`（装 Claude Code 前设置，可选） |
+| `CODEX_HOME` | `E:\Data\codex`（装 Codex 前设置，可选） |
 
 ### 用户 Path（完整参考）
 
@@ -1769,13 +1773,14 @@ Get-Item "$env:LOCALAPPDATA\Cursor" | Select-Object LinkType, Target
 
 ### 路径规划
 
-| 工具 | 程序位置 | 配置位置 |
-|------|----------|----------|
-| Claude Code（原生） | `%USERPROFILE%\.local\bin\claude.exe` | `%USERPROFILE%\.claude\` |
-| Codex（原生） | `%USERPROFILE%\.local\bin\codex.exe`（或安装器指定路径） | `%USERPROFILE%\.codex\config.toml` |
-| Codex（npm） | `E:\Envs\Node\npm-global\codex.cmd` | `%USERPROFILE%\.codex\config.toml` |
+| 工具 | 程序位置 | 默认数据目录（C 盘） | E 盘目标（推荐） |
+|------|----------|----------------------|------------------|
+| Claude Code | `%USERPROFILE%\.local\bin\claude.exe` | `%USERPROFILE%\.claude\` | `E:\Data\claude` |
+| Claude 额外状态 | — | `%USERPROFILE%\.claude.json` | 随 `CLAUDE_CONFIG_DIR` 管理 |
+| Codex | `%USERPROFILE%\.local\bin\` 或 npm 全局 | `%USERPROFILE%\.codex\` | `E:\Data\codex` |
 
-> CLI 配置目录默认在 C 盘用户目录，体积小；**用 CC Switch 统一管理**，无需手改 JSON/TOML。
+> 两者都会产生**会话记录、缓存、日志**，默认在 C 盘用户目录；体积通常比 Cursor 小，但重度使用会增长。  
+> 官方支持用**环境变量**迁到 E 盘（比 Cursor 的 Junction 更干净）。**用 CC Switch 管理 API 配置**，无需手改 JSON/TOML。
 
 ### 账号要求
 
@@ -1867,7 +1872,9 @@ npm install -g @openai/codex
 
 ### Codex 配置（Windows 沙箱）
 
-首次运行前，创建或编辑 `%USERPROFILE%\.codex\config.toml`：
+若已设 `CODEX_HOME=E:\Data\codex`，配置文件路径为 `E:\Data\codex\config.toml`；否则为 `%USERPROFILE%\.codex\config.toml`。
+
+首次运行前创建或编辑该文件：
 
 ```toml
 [windows]
@@ -1893,6 +1900,73 @@ codex
 
 首次运行通过浏览器登录 ChatGPT，或配置 API Key。
 
+### 数据与缓存迁出 C 盘（环境变量）
+
+Claude Code 和 Codex 运行时会写入会话、工具输出、图片/粘贴缓存等。与 Cursor 不同，两者都支持**官方环境变量**指定数据根目录。
+
+#### 会增长的内容
+
+| 工具 | 典型目录 | 内容 |
+|------|----------|------|
+| Claude Code | `.claude\projects\` | 对话记录、工具结果 |
+| Claude Code | `.claude\file-history\` | 文件修改前快照 |
+| Claude Code | `.claude\paste-cache\`、`image-cache\` | 粘贴/图片缓存 |
+| Codex | `.codex\sessions\` | 会话记录 |
+| Codex | `.codex\cache\`、`attachments\` | 缓存与附件 |
+| Codex | `.codex\sqlite\`、`logs\` | 本地数据库与日志 |
+
+> C 盘不紧、轻度使用可先不迁；C 盘紧张或打算长期重度使用，建议**安装前**设好环境变量。
+
+#### 方式 A：安装前设置（推荐）
+
+用户环境变量：
+
+| 变量名 | 变量值 |
+|--------|--------|
+| `CLAUDE_CONFIG_DIR` | `E:\Data\claude` |
+| `CODEX_HOME` | `E:\Data\codex` |
+
+```powershell
+New-Item -ItemType Directory -Path "E:\Data\claude" -Force
+New-Item -ItemType Directory -Path "E:\Data\codex" -Force
+```
+
+设好后安装并首次运行 Claude Code / Codex，数据从一开始就在 E 盘。  
+`TEMP` / `TMP` 已指向 `E:\Temp` 时，Claude Code 临时文件也不会堆 C 盘。
+
+#### 方式 B：已使用后迁移
+
+1. 完全退出 `claude` / `codex`（确认任务管理器无相关进程）
+2. 设好上述用户环境变量
+3. 迁移已有数据：
+
+```powershell
+# Claude Code
+if (Test-Path "$env:USERPROFILE\.claude") {
+    robocopy "$env:USERPROFILE\.claude" "E:\Data\claude" /E /MOVE /R:1 /W:1
+}
+
+# Codex
+if (Test-Path "$env:USERPROFILE\.codex") {
+    robocopy "$env:USERPROFILE\.codex" "E:\Data\codex" /E /MOVE /R:1 /W:1
+}
+```
+
+4. 新开终端，运行 `claude` / `codex` 验证登录和配置正常
+
+#### 清理缓存（保留配置和登录）
+
+先退出 CLI，再删缓存类目录（会丢失部分会话/附件，慎用）：
+
+```text
+E:\Data\claude\paste-cache\
+E:\Data\claude\image-cache\
+E:\Data\codex\cache\
+E:\Data\codex\attachments\
+```
+
+> **不要**删除整个 `claude` / `codex` 目录，否则会丢登录信息和配置。
+
 ### 常见问题
 
 | 现象 | 处理 |
@@ -1902,6 +1976,7 @@ codex
 | `Missing optional dependency @openai/codex-win32-x64` | 卸载重装：`npm uninstall -g @openai/codex` 再 `npm install -g @openai/codex@latest`；或改用原生安装 |
 | Codex elevated 沙箱失败 | 先试 `sandbox = "unelevated"`；公司电脑找 IT 放行 |
 | 两者都想换 API 供应商 | 装 [CC Switch](#二十二cc-switch)，不要手改配置文件 |
+| C 盘被 CLI 数据占满 | 设 `CLAUDE_CONFIG_DIR` / `CODEX_HOME` 到 `E:\Data\`，见上文 |
 
 ---
 
@@ -2133,6 +2208,8 @@ D:\Apps\Communication\QQ
 | `GOPATH` | `E:\Envs\Go\gopath` | Go 开发 |
 | `GOMODCACHE` | `E:\Cache\go-mod` | Go 开发 |
 | `PIP_CACHE_DIR` | `E:\Cache\pip` | Python 开发 |
+| `CLAUDE_CONFIG_DIR` | `E:\Data\claude` | 装 Claude Code 前 |
+| `CODEX_HOME` | `E:\Data\codex` | 装 Codex 前 |
 
 > `OLLAMA_MODELS` 已移至 [Ollama 章节](#二十三本地-ai-模型ollama)。
 
@@ -2166,6 +2243,7 @@ D:\Apps\Communication\QQ
 - [ ] Cursor 缓存已通过 Junction 迁到 `E:\Cache\Cursor\Roaming` / `Local`
 - [ ] Claude Code 已装，`claude --version` 正常
 - [ ] Codex 已装，`codex --version` 正常
+- [ ] Claude / Codex 数据目录在 `E:\Data\claude` / `codex`（若已配置环境变量）
 - [ ] CC Switch 已装，可切换 API 供应商
 - [ ] Ollama 已装（可选），模型在 `E:\AI\Models\ollama`
 - [ ] 微信 / QQ 程序在 `D:\Apps\Communication\`，聊天文件在 `E:\Data\wechat` / `qq`
@@ -2173,4 +2251,4 @@ D:\Apps\Communication\QQ
 
 ---
 
-*文档版本：2026-07-02（含 Cursor Junction / 微信 QQ / Claude Code / Codex / CC Switch / Ollama）*
+*文档版本：2026-07-02（含 Cursor Junction / CLI 数据迁盘 / 微信 QQ / Claude Code / Codex / CC Switch / Ollama）*
