@@ -49,6 +49,7 @@ D:\
 ├── Apps\              # 正式安装（IDEA、Android Studio、Navicat、7-Zip 等）
 │   ├── JetBrains\     # IDEA、Android Studio
 │   ├── Database\      # Navicat
+│   ├── Communication\ # 微信、QQ、钉钉等
 │   └── Utilities\     # 7-Zip、Everything
 ├── Portable\          # 绿色/便携工具（Git 等）
 ├── Packages\          # 安装包归档
@@ -75,7 +76,9 @@ E:\
 │   ├── Android\       # sdk、ndk、home（AVD）
 │   └── Flutter\       # flutter SDK
 ├── Services\          # 本地服务（MySQL、Redis 等）
-├── Data\              # 持久化数据
+├── Data\              # 持久化数据（MySQL、Redis、微信/QQ 聊天记录等）
+│   ├── wechat\        # 微信文件管理目录
+│   └── qq\            # QQ 文件/缓存目录
 ├── Cache\             # 构建与包管理缓存（Gradle、pub、AndroidStudio、Cursor 等）
 │   └── Cursor\        # Roaming / Local（Junction 目标目录）
 ├── Containers\        # Docker / WSL
@@ -2008,10 +2011,61 @@ Base URL: http://localhost:11434/v1
 
 | 软件 | 安装位置 | 何时装 |
 |------|----------|--------|
+| 微信 / QQ | `D:\Apps\Communication\` | 日常通讯 |
 | Postman / Apifox | `D:\Portable\API\` | 接口调试 |
 | DBeaver | `D:\Portable\DB\` 或 `D:\Apps\Database\` | 开源数据库客户端 |
 | Python | `E:\Envs\Python\` | Python 开发 |
 | Go | `E:\Envs\Go\` | Go 开发 |
+
+### 微信 / QQ
+
+> 程序装 **D 盘**，聊天记录和文件改到 **E 盘**。C 盘只保留小体积配置（`%APPDATA%\Tencent\` 等），无需 Junction。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| 微信程序 | `D:\Apps\Communication\WeChat` |
+| QQ 程序 | `D:\Apps\Communication\QQ` |
+| 微信聊天记录/文件 | `E:\Data\wechat` |
+| QQ 消息/文件/缓存 | `E:\Data\qq` |
+| 安装包 | `D:\Packages\2026\Tools\` |
+
+#### 安装前建目录
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Apps\Communication\WeChat" -Force
+New-Item -ItemType Directory -Path "D:\Apps\Communication\QQ" -Force
+New-Item -ItemType Directory -Path "E:\Data\wechat" -Force
+New-Item -ItemType Directory -Path "E:\Data\qq" -Force
+```
+
+#### 安装程序（D 盘）
+
+安装时 **Destination** 改为：
+
+```
+D:\Apps\Communication\WeChat
+D:\Apps\Communication\QQ
+```
+
+> 安装器默认常指向 C 盘，务必点 **浏览** 改路径。同类软件（钉钉、飞书）也可放 `D:\Apps\Communication\`。
+
+#### 聊天记录迁到 E 盘（必做）
+
+程序在 D 盘后，聊天文件默认仍可能写入 C 盘，需在软件内修改：
+
+**微信**：**设置 → 文件管理 → 更改** → `E:\Data\wechat`
+
+**QQ（QQNT）**：**设置 → 存储管理 / 文件管理** → `E:\Data\qq`
+
+#### 注意事项
+
+| 项 | 说明 |
+|----|------|
+| 不要放 E:\Workspace | E 盘工作区专用于源码，不与聊天数据混放 |
+| C 盘残留 | `%APPDATA%\Tencent\` 等配置目录体积小，可保留 |
+| 空间占用 | 聊天记录、图片、文件传输是主要体积，改完文件管理路径后 C 盘不再堆积 |
 
 ### 后续环境变量（按需添加，均为用户变量）
 
@@ -2055,8 +2109,9 @@ Base URL: http://localhost:11434/v1
 - [ ] Codex 已装，`codex --version` 正常
 - [ ] CC Switch 已装，可切换 API 供应商
 - [ ] Ollama 已装（可选），模型在 `E:\AI\Models\ollama`
+- [ ] 微信 / QQ 程序在 `D:\Apps\Communication\`，聊天文件在 `E:\Data\wechat` / `qq`
 - [ ] 在 `E:\Workspace` 下成功打开并运行过一个项目
 
 ---
 
-*文档版本：2026-07-02（含 Cursor Junction 缓存迁移 / Claude Code / Codex / CC Switch / Ollama）*
+*文档版本：2026-07-02（含 Cursor Junction / 微信 QQ / Claude Code / Codex / CC Switch / Ollama）*
