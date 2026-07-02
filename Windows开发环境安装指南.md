@@ -266,7 +266,7 @@ where.exe git
 | 用途 | 路径 |
 |------|------|
 | Fork 程序 | `%LOCALAPPDATA%\Fork`（无法改到 D 盘，属正常） |
-| 复用 Git | `D:\Portable\VCS\Git\cmd\git.exe` |
+| 复用 Git | `D:\Portable\VCS\Git\bin\git.exe`（**必须用 `bin`**，与 `bash.exe` 同目录；勿填 `cmd\git.exe`） |
 | 安装包归档 | `D:\Packages\2026\Dev\` |
 | 仓库源码 | `E:\Workspace\...`（在 Fork 里打开/克隆到此） |
 
@@ -288,13 +288,15 @@ where.exe git
 **File → Preferences → Git → Git Instance** 选 **Custom**，路径填：
 
 ```text
-D:\Portable\VCS\Git\cmd\git.exe
+D:\Portable\VCS\Git\bin\git.exe
 ```
+
+> Fork 会检查 `git.exe` **同目录**下是否有 `bash.exe`。`cmd\git.exe` 旁边没有 `bash.exe`，会报 `Missing bash.exe`；`bin\` 目录里两者都有。终端 Path 仍用 `D:\Portable\VCS\Git\cmd` 即可，与 Fork 不冲突。
 
 或直接编辑 `%LOCALAPPDATA%\Fork\settings.json`（`CustomGitInstancePath` 必须用**正斜杠**）：
 
 ```json
-"CustomGitInstancePath": "D:/Portable/VCS/Git/cmd/git.exe"
+"CustomGitInstancePath": "D:/Portable/VCS/Git/bin/git.exe"
 ```
 
 保存后**完全退出 Fork 再打开**。配置成功后：
@@ -325,13 +327,14 @@ git --version
 git config --global --get user.name
 ```
 
-在 Fork 内：**Preferences → Git**，确认 Git Instance 为 `D:\Portable\VCS\Git\cmd\git.exe`；打开 `E:\Workspace` 下任意已有仓库，能正常显示提交历史即可。
+在 Fork 内：**Preferences → Git**，确认 Git Instance 为 `D:\Portable\VCS\Git\bin\git.exe`；打开 `E:\Workspace` 下任意已有仓库，能正常显示提交历史即可。
 
 #### 常见问题
 
 | 现象 | 处理 |
 |------|------|
-| C 盘出现 `...\Fork\gitInstance\` 且很大 | Preferences 改 Custom Git；退出 Fork 后删 `gitInstance` 文件夹 |
+| C 盘出现 `...\Fork\gitInstance\` 且很大 | Preferences 改 Custom Git 为 `bin\git.exe`；退出 Fork 后删 `gitInstance` 文件夹 |
+| `Missing bash.exe` | Git 路径改为 `D:\Portable\VCS\Git\bin\git.exe`（不要用 `cmd\git.exe`） |
 | Fork 打不开 / 无响应 | 杀毒软件可能拦截 `%LOCALAPPDATA%\Fork`；加白名单后重装 |
 | 与 Cursor 内置 Git 冲突？ | 不冲突；各用各的界面，底层同一套 `git.exe` 与 `.gitconfig` |
 | `error launching git: filename too long` | **设置 → 系统 → 关于 → 高级系统设置** 勾选启用 Win32 长路径；并确认用 Custom Git |
@@ -3045,7 +3048,7 @@ Base URL: http://localhost:11434/v1
 
 | 软件               | 安装位置                                    | 何时装       |
 | ---------------- | --------------------------------------- | --------- |
-| Fork（Git 客户端）   | `%LOCALAPPDATA%\Fork`（程序）；Git 复用 `D:\Portable\VCS\Git` | Git 装好后，需要可视化 Git 时 |
+| Fork（Git 客户端）   | `%LOCALAPPDATA%\Fork`（程序）；Git 复用 `D:\Portable\VCS\Git\bin\git.exe` | Git 装好后，需要可视化 Git 时 |
 | ToDesk（远程桌面）   | `D:\Apps\Communication\ToDesk`          | 需要远程连接本机或其它设备时 |
 | Termius（SSH）     | `D:\Apps\Utilities\Termius`             | 常连服务器、要图形化 SSH 时 |
 | OBS Studio       | `D:\Portable\Media\OBS-Studio`（便携推荐） | 录屏、直播、会议录制 |
@@ -3554,7 +3557,7 @@ Steam 与 Git / Cursor / Docker 无冲突；注意游戏盘预留足够空间（
 
 - [ ] D/E 盘目录结构已就绪
 - [ ] Git 可用，`git config` 已配置
-- [ ] Fork 已装（可选），Preferences → Git 指向 `D:\Portable\VCS\Git\cmd\git.exe`，`gitInstance` 已删或不存在
+- [ ] Fork 已装（可选），Preferences → Git 指向 `D:\Portable\VCS\Git\bin\git.exe`，`gitInstance` 已删或不存在
 - [ ] JDK 21 / 17 已装，`java -version` 正常
 - [ ] Maven 可用，`mvn -version` 正常
 - [ ] IDEA 已装，缓存/config 在 E 盘
