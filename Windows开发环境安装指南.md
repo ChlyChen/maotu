@@ -3,6 +3,17 @@
 > 适用场景：重装系统后的个人开发机，三盘结构（C 系统 / D 应用 / E 开发）  
 > 环境变量策略：**全部使用用户变量 + 用户 Path，不修改系统变量**
 
+### 文档约定
+
+| 约定 | 说明 |
+|------|------|
+| 路径写法 | 正文用 `D:\...`；Fork `settings.json` 等个别场景用正斜杠 `D:/...` |
+| 日常终端 | 验证命令用**普通 PowerShell**（`PS E:\Workspace\...>`），不要用 `C:\WINDOWS\system32` 管理员窗口 |
+| 何时用管理员 | Junction、Windows 服务、WSL、ToDesk/OBS 安装器等明确标注时再提权 |
+| 环境变量生效 | 改完用户变量后**新开终端**或重启 IDE |
+| 可选软件 | 章节标题或表格中标「可选」的，按实际需要安装，不阻塞主流程 |
+| 安装包归档 | 开发类 → `D:\Packages\2026\Dev\`；通讯/影音/游戏 → `D:\Packages\2026\Tools\` |
+
 ---
 
 ## 目录
@@ -55,6 +66,7 @@ D:\
 │   ├── Database\      # Navicat
 │   ├── Communication\ # 微信、QQ、钉钉、ToDesk 等
 │   ├── Games\         # Steam 客户端
+│   ├── AI\            # Ollama 等（/DIR= 安装时）
 │   └── Utilities\     # 7-Zip、Everything、Termius 等
 ├── Portable\          # 绿色/便携工具（Git、Clash、OBS 等）
 │   ├── VCS\           # Git、Fork 相关
@@ -116,6 +128,18 @@ E:\
 5. 所有缓存迁移出 C 盘
 6. **环境变量一律用用户变量，不动系统变量**
 
+### 无法迁到 D 盘的程序（C 盘用户目录，属正常）
+
+部分软件安装器**不提供选盘**，只能落在 `%LOCALAPPDATA%` 等用户目录。策略：**程序接受 C 盘小体积占用；大块数据用环境变量或 Junction 迁到 E 盘**。
+
+| 软件 | 默认程序路径 | 数据迁出方式 |
+|------|--------------|--------------|
+| Fork | `%LOCALAPPDATA%\Fork` | 复用 D 盘 Git（`bin\git.exe`），删 `gitInstance` |
+| Codex CLI | `%LOCALAPPDATA%\Programs\OpenAI\Codex` | `CODEX_HOME` + `.codex` Junction |
+| Ollama（未 `/DIR=` 时） | `%LOCALAPPDATA%\Programs\Ollama` | `OLLAMA_MODELS` → E 盘；或 `/DIR=` 装 D 盘 |
+| Discord（若安装） | `%LOCALAPPDATA%\Discord` | 可选 Junction；非开发必需 |
+| Cursor 缓存 | `%APPDATA%` / `%LOCALAPPDATA%\Cursor` | Junction → `E:\Cache\Cursor\`（必做） |
+
 ---
 
 
@@ -160,7 +184,7 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 
 ```
 ① 目录结构（D/E 盘）
-② Git（可选：Fork 图形客户端，见 [Git 章节](#fork可选git-图形客户端)）
+② Git → 验证通过后可选装 Fork（见 Git 章节）
 ③ JDK 21 + JDK 17
 ④ Maven
 ⑤ IntelliJ IDEA
@@ -175,12 +199,12 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 ⑭ Cursor（AI IDE）
 ⑮ Claude Code + Codex（先设数据目录环境变量 → 装 CLI → 验证命令）
 ⑯ CC Switch（配 API Key 供应商 → 再正式使用 CLI）
-⑰ Ollama（本地大模型，可选）
+⑰ Ollama（可选：先 OLLAMA_MODELS → OllamaSetup.exe /DIR= → 再 pull）
 ⑱ Python（按需：装 E 盘 + pip 缓存 + Path）
-⑲ 按需：Termius / OBS / Clash / Steam / Postman / Apifox / Go ...
+⑲ 按需：Clash（下载受阻时提前）/ Termius / OBS / Steam / ToDesk / Postman / Go ...
 ```
 
----
+> **流程要点**：`TEMP`/`TMP` 在装 Git 时即设；Claude/Codex 的 Junction 在装 CC Switch **之前**；Ollama 的 `OLLAMA_MODELS` 在**第一次 pull 之前**；国内拉包慢可在 ⑲ 提前装 Clash。
 
 
 
@@ -251,7 +275,24 @@ git --version
 git config --global user.name
 echo "[$env:TEMP]"
 where.exe git
+Test-Path "D:\Portable\VCS\Git\bin\bash.exe"
+# 期望 True（Fork 依赖同目录下的 bash.exe）
 ```
+
+
+
+### Git 路径说明（`cmd` 与 `bin`）
+
+Git for Windows 同一安装目录下有两套入口，**不要混用场景**：
+
+
+| 用途 | 路径 | 说明 |
+|------|------|------|
+| 终端 / 用户 Path | `D:\Portable\VCS\Git\cmd` | `where git` 应指向 `cmd\git.exe` |
+| IDEA Git 配置 | `D:\Portable\VCS\Git\cmd\git.exe` | 与终端一致即可 |
+| **Fork Custom Git** | `D:\Portable\VCS\Git\bin\git.exe` | **必须 `bin`**，同目录要有 `bash.exe` |
+
+填 `cmd\git.exe` 给 Fork 会报：`Missing bash.exe`。
 
 
 
@@ -259,7 +300,8 @@ where.exe git
 
 > 与 Cursor / IDEA 内置 Git **互补**：适合可视化 diff、交互式 rebase、解决合并冲突、浏览历史。  
 > 程序本体因 Velopack 自动更新机制**只能装在** `%LOCALAPPDATA%\Fork`（与 Codex 类似，安装器**无路径选项**）。  
-> **必做**：在 Fork 里指向已装的 `D:\Portable\VCS\Git`，避免 Fork 再下载一份约 **400MB** 的 bundled Git 到 C 盘。
+> **必做**：Custom Git 指向 `D:\Portable\VCS\Git\bin\git.exe`（不是 `cmd\git.exe`），避免 Fork 再下载约 **400MB** 的 bundled Git。  
+> **不必装** GitHub Desktop（与 Fork 功能重叠）。
 
 #### 路径规划
 
@@ -1789,6 +1831,8 @@ IDEA 中 **Settings → Languages & Frameworks → Flutter**：
 | `CLAUDE_CONFIG_DIR`        | `E:\Data\claude`（装 Claude Code 前设置，可选） |
 | `CODEX_HOME`               | `E:\Data\codex`（装 Codex 前设置，可选）        |
 | `PIP_CACHE_DIR`            | `E:\Cache\pip`（装 Python 前设置）            |
+| `HTTP_PROXY`               | `http://127.0.0.1:7897`（仅终端不走系统代理时；端口以 Clash 为准） |
+| `HTTPS_PROXY`              | `http://127.0.0.1:7897`（同上）              |
 
 
 
@@ -1797,6 +1841,7 @@ IDEA 中 **Settings → Languages & Frameworks → Flutter**：
 
 ```
 D:\Portable\VCS\Git\cmd
+D:\Apps\AI\Ollama
 D:\Portable\bin
 D:\Apps\Utilities\7-Zip
 %USERPROFILE%\.local\bin
@@ -1818,6 +1863,8 @@ E:\Envs\Python\Python313\Scripts
 %PNPM_HOME%
 E:\Tools\bin
 ```
+
+> `D:\Apps\AI\Ollama` 仅在使用 `OllamaSetup.exe /DIR=` 装到 D 盘时需要；默认 C 盘安装可省略此项。
 
 
 
@@ -1851,7 +1898,7 @@ echo "[$env:TEMP]"
 | Settings → Maven           | Local repository          | `E:\Cache\Maven`                    |
 | Settings → Gradle          | Gradle user home          | `E:\Cache\Gradle`                   |
 | Settings → System Settings | Default project directory | `E:\Workspace`                      |
-| Settings → Git             | Git executable            | `D:\Portable\VCS\Git\cmd\git.exe`   |
+| Settings → Git             | Git executable            | `D:\Portable\VCS\Git\cmd\git.exe`（IDEA 用 `cmd`；Fork 用 `bin`，见 [Git 章节](#git-路径说明cmd-与-bin)） |
 | Settings → Node.js         | Node interpreter          | `E:\Envs\Node\nodejs\node.exe`      |
 | Settings → Flutter         | Flutter SDK path          | `E:\SDK\Flutter\flutter`            |
 | Settings → Dart            | Dart SDK path             | 随 Flutter 自动识别                      |
@@ -2096,6 +2143,24 @@ curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
 ### 29. `pip cache dir` 不是 `E:\Cache\pip`
 
 **处理**：安装前设用户变量 `PIP_CACHE_DIR=E:\Cache\pip`；或 `python -m pip config set global.cache-dir E:\Cache\pip`。**新开终端**后再 `pip install`。
+
+### 30. Fork 报 `Missing bash.exe`
+
+**原因**：Custom Git 填了 `cmd\git.exe`，该目录旁没有 `bash.exe`。
+
+**处理**：改为 `D:\Portable\VCS\Git\bin\git.exe`，完全退出 Fork 后重开。详见 [Git 路径说明](#git-路径说明cmd-与-bin)。
+
+### 31. Ollama 安装器不能选盘
+
+**原因**：双击 `OllamaSetup.exe` 无路径界面，默认装 `%LOCALAPPDATA%\Programs\Ollama`。
+
+**处理**：
+
+1. 用户变量 `OLLAMA_MODELS=E:\AI\Models\ollama`（**pull 前**必设）  
+2. 命令行安装：`OllamaSetup.exe /DIR="D:\Apps\AI\Ollama"`  
+3. 程序若仍留 C 盘可接受，只要模型在 E 盘  
+
+详见 [Ollama 章节](#二十三本地-ai-模型ollama)。
 
 ---
 
@@ -3054,6 +3119,7 @@ Base URL: http://localhost:11434/v1
 | OBS Studio       | `D:\Portable\Media\OBS-Studio`（便携推荐） | 录屏、直播、会议录制 |
 | Clash Verge Rev  | `D:\Portable\Network\Clash-Verge-Rev`（便携推荐） | 需要系统代理 / TUN 时 |
 | Steam            | `D:\Apps\Games\Steam`；游戏库 `D:\Apps\Games\SteamLibrary` | 玩游戏、Steam 下载 |
+| Discord          | `%LOCALAPPDATA%\Discord`（默认）；可选 Junction 迁 D 盘 | 海外社区/语音（非必需） |
 | 微信 / QQ          | `D:\Apps\Communication\`                | 日常通讯      |
 | Postman / Apifox | `D:\Portable\API\`                      | 接口调试      |
 | DBeaver          | `D:\Portable\DB\` 或 `D:\Apps\Database\` | 开源数据库客户端  |
@@ -3533,6 +3599,36 @@ Steam 与 Git / Cursor / Docker 无冲突；注意游戏盘预留足够空间（
 
 
 
+### Discord（可选，海外社区）
+
+> **非开发必需**。仅在你需要加入 Discord 服务器（开源社区、海外团队）时安装。国内日常开发用微信/QQ 即可。
+
+| 用途 | 路径 |
+|------|------|
+| 程序（默认，无法选盘） | `%LOCALAPPDATA%\Discord` |
+| 配置/缓存 | `%APPDATA%\discord` |
+| 安装包 | `D:\Packages\2026\Tools\` |
+
+**安装**：官网 [https://discord.com/download](https://discord.com/download)，双击 `DiscordSetup.exe`（**无**自定义路径）。
+
+**若要迁 D 盘**（与 Cursor 同款 Junction 思路，可选）：
+
+```powershell
+# 完全退出 Discord 后
+New-Item -ItemType Directory -Path "D:\Apps\Communication\Discord" -Force
+New-Item -ItemType Directory -Path "E:\Cache\Discord\Roaming" -Force
+# 若已装过：先 robocopy 挪走原目录内容，再建 Junction
+New-Item -ItemType Junction -Path "$env:LOCALAPPDATA\Discord" -Target "D:\Apps\Communication\Discord"
+New-Item -ItemType Junction -Path "$env:APPDATA\discord" -Target "E:\Cache\Discord\Roaming"
+```
+
+然后重新运行 `DiscordSetup.exe`。
+
+> **不必装** GitHub Desktop（与 Fork 重叠）；Discord 与开发 toolchain 无关。
+
+
+
+
 ### 后续环境变量（按需添加，均为用户变量）
 
 
@@ -3555,6 +3651,7 @@ Steam 与 Git / Cursor / Docker 无冲突；注意游戏盘预留足够空间（
 
 ## 安装完成检查清单
 
+- [ ] 日常验证命令在**普通 PowerShell**（`PS E:\Workspace\...>`）中执行，非 `system32` 管理员窗口
 - [ ] D/E 盘目录结构已就绪
 - [ ] Git 可用，`git config` 已配置
 - [ ] Fork 已装（可选），Preferences → Git 指向 `D:\Portable\VCS\Git\bin\git.exe`，`gitInstance` 已删或不存在
@@ -3601,4 +3698,4 @@ Steam 与 Git / Cursor / Docker 无冲突；注意游戏盘预留足够空间（
 
 ---
 
-*文档版本：2026-07-02（含 Termius/OBS/Clash/Steam、Fork、ToDesk、Python、WinGet/Codex/Junction/CC Switch）*
+*文档版本：2026-07-02 v2（审阅：文档约定 / Git cmd·bin / C 盘例外 / Ollama·Fork FAQ / Discord 可选）*
