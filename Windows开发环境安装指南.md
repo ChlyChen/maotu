@@ -53,7 +53,7 @@ D:\
 ├── Apps\              # 正式安装（IDEA、Android Studio、Navicat、7-Zip 等）
 │   ├── JetBrains\     # IDEA、Android Studio
 │   ├── Database\      # Navicat
-│   ├── Communication\ # 微信、QQ、钉钉等
+│   ├── Communication\ # 微信、QQ、钉钉、ToDesk 等
 │   └── Utilities\     # 7-Zip、Everything
 ├── Portable\          # 绿色/便携工具（Git 等）
 ├── Packages\          # 安装包归档
@@ -172,7 +172,7 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 ⑯ CC Switch（配 API Key 供应商 → 再正式使用 CLI）
 ⑰ Ollama（本地大模型，可选）
 ⑱ Python（按需：装 E 盘 + pip 缓存 + Path）
-⑲ 按需：Postman / Apifox / Go ...
+⑲ 按需：Postman / Apifox / ToDesk / Go ...
 ```
 
 ---
@@ -2982,6 +2982,7 @@ Base URL: http://localhost:11434/v1
 | 软件               | 安装位置                                    | 何时装       |
 | ---------------- | --------------------------------------- | --------- |
 | Fork（Git 客户端）   | `%LOCALAPPDATA%\Fork`（程序）；Git 复用 `D:\Portable\VCS\Git` | Git 装好后，需要可视化 Git 时 |
+| ToDesk（远程桌面）   | `D:\Apps\Communication\ToDesk`          | 需要远程连接本机或其它设备时 |
 | 微信 / QQ          | `D:\Apps\Communication\`                | 日常通讯      |
 | Postman / Apifox | `D:\Portable\API\`                      | 接口调试      |
 | DBeaver          | `D:\Portable\DB\` 或 `D:\Apps\Database\` | 开源数据库客户端  |
@@ -3169,6 +3170,74 @@ D:\Apps\Communication\QQ
 
 
 
+### ToDesk（远程桌面）
+
+> 远程连接本机或其它设备。程序装 **D 盘**；用户配置在 `%APPDATA%\ToDesk\`，服务相关文件在 `%ProgramData%\ToDesk\`，体积通常很小，**无需 Junction**（与微信策略一致）。  
+> 安装会注册系统服务/虚拟显示驱动，需 **管理员权限**（UAC 点「是」）。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| ToDesk 程序 | `D:\Apps\Communication\ToDesk` |
+| 用户配置（自动） | `%APPDATA%\ToDesk\`（`config.ini`、设备列表等） |
+| 服务/公共配置 | `%ProgramData%\ToDesk\`（安装器写入，勿手动挪） |
+| 安装包 | `D:\Packages\2026\Tools\` |
+| 文件传输/录像（可选） | `E:\Data\todesk`（若软件内可改默认保存路径） |
+
+#### 安装前建目录
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Apps\Communication\ToDesk" -Force
+New-Item -ItemType Directory -Path "E:\Data\todesk" -Force
+```
+
+#### 下载与安装
+
+1. 官网：[https://www.todesk.com/download](https://www.todesk.com/download) → **ToDesk 个人版**（认准官方域名，勿用第三方「破解版」）
+2. 安装包保存到 `D:\Packages\2026\Tools\`
+3. 右键安装包 → **以管理员身份运行**（UAC 点「是」）
+4. 选 **自定义安装**（不要「快速安装」到 `C:\Program Files\ToDesk`）
+5. 安装路径点 **浏览**，改为：
+
+```text
+D:\Apps\Communication\ToDesk
+```
+
+6. 建议勾选「创建桌面快捷方式」；**开机自启**按需（常作被控端可勾，仅偶尔远控可不勾）
+7. 安装完成后登录（手机验证码 / 微信 / App 扫码均可）
+
+#### 安全与使用建议
+
+| 项 | 建议 |
+|----|------|
+| 被控端密码 | 设置强密码；或开启「仅允许临时验证码连接」 |
+| 无人值守 | 仅在自己设备、且确有需要时开启 |
+| 文件传输 | 若设置里有「默认保存路径」，改为 `E:\Data\todesk` |
+| 与开发环境 | 与 Git / Cursor / Docker 无冲突；大文件传输时注意带宽 |
+
+#### 验证
+
+```powershell
+Test-Path "D:\Apps\Communication\ToDesk\ToDesk.exe"
+Get-Service -Name "*todesk*" -ErrorAction SilentlyContinue | Select-Object Name, Status
+```
+
+打开 ToDesk，界面显示本机 **设备代码**，能成功远程连接另一台设备（或用手机 App 连本机）即正常。
+
+#### 常见问题
+
+| 现象 | 处理 |
+|------|------|
+| 安装失败 / 无法写入 | 管理员运行安装包；路径用纯英文；确保 D 盘有 ≥1GB 空间 |
+| 仍装到 C 盘 | 卸载后重装，必须选「自定义安装」并改路径 |
+| 杀毒拦截 | 将 `D:\Apps\Communication\ToDesk` 加入信任/排除列表 |
+| 远程黑屏 / 无画面 | 更新显卡驱动；ToDesk **设置** 里切换渲染/硬件加速选项 |
+| 卸载后残留 | 删 `D:\Apps\Communication\ToDesk`；必要时清 `%APPDATA%\ToDesk`、`%ProgramData%\ToDesk` 后重装 |
+
+
+
+
 ### 后续环境变量（按需添加，均为用户变量）
 
 
@@ -3225,8 +3294,9 @@ D:\Apps\Communication\QQ
 - [ ] `PIP_CACHE_DIR` 为 `E:\Cache\pip`，`python -m pip cache dir` 一致
 - [ ] 已关闭 Windows 应用执行别名中的 `python.exe` / `python3.exe`
 - [ ] 微信 / QQ 程序在 `D:\Apps\Communication\`，聊天文件在 `E:\Data\wechat` / `qq`
+- [ ] ToDesk 在 `D:\Apps\Communication\ToDesk`，能显示设备代码并正常远控（可选）
 - [ ] 在 `E:\Workspace` 下成功打开并运行过一个项目
 
 ---
 
-*文档版本：2026-07-02（含 Fork / Python 实测 / WinGet/Codex/Junction/CC Switch）*
+*文档版本：2026-07-02（含 Fork / ToDesk / Python 实测 / WinGet/Codex/Junction/CC Switch）*
