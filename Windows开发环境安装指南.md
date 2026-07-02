@@ -2908,13 +2908,17 @@ Get-Content "E:\Data\codex\auth.json"        # 应有 OPENAI_API_KEY（勿外泄
 
 ### 路径规划
 
+> **说明**：双击 `OllamaSetup.exe` **没有**路径选项，默认装到 `%LOCALAPPDATA%\Programs\Ollama`（C 盘用户目录）。  
+> 要迁出 C 盘分两步：**程序**用安装器 `/DIR=` 参数；**模型**（占空间大头，几十～上百 GB）用 `OLLAMA_MODELS` 指到 E 盘。
 
-| 用途   | 路径                          |
-| ---- | --------------------------- |
-| 程序   | `D:\Apps\AI\Ollama` 或默认安装路径 |
-| 模型文件 | `E:\AI\Models\ollama`       |
-| 缓存   | `E:\AI\Cache`               |
 
+| 用途 | 路径 |
+|------|------|
+| 程序（自定义安装） | `D:\Apps\AI\Ollama`（需命令行 `/DIR=`，见下文） |
+| 程序（默认，未改时） | `%LOCALAPPDATA%\Programs\Ollama` |
+| 模型文件（必迁 E 盘） | `E:\AI\Models\ollama`（`OLLAMA_MODELS`） |
+| 日志/更新缓存 | `%LOCALAPPDATA%\Ollama`（体积小，可留 C） |
+| 安装包 | `D:\Packages\2026\Dev\` |
 
 
 
@@ -2922,26 +2926,73 @@ Get-Content "E:\Data\codex\auth.json"        # 应有 OPENAI_API_KEY（勿外泄
 
 [https://ollama.com/download/windows](https://ollama.com/download/windows)
 
-### 用户环境变量（安装前设置，模型存 E 盘）
+安装包保存到 `D:\Packages\2026\Dev\`
 
 
-| 变量名             | 变量值                   |
-| --------------- | --------------------- |
+
+### 用户环境变量（拉模型前必设）
+
+| 变量名 | 变量值 |
+|--------|--------|
 | `OLLAMA_MODELS` | `E:\AI\Models\ollama` |
 
+> **在第一次 `ollama pull` 之前**设好，否则模型会先下到 `%USERPROFILE%\.ollama\models`（C 盘）。
 
 先建目录：
 
 ```powershell
+New-Item -ItemType Directory -Path "D:\Apps\AI\Ollama" -Force
 New-Item -ItemType Directory -Path "E:\AI\Models\ollama" -Force
-New-Item -ItemType Directory -Path "E:\AI\Cache" -Force
+```
+
+PowerShell 设用户变量：
+
+```powershell
+[Environment]::SetEnvironmentVariable('OLLAMA_MODELS', 'E:\AI\Models\ollama', 'User')
+```
+
+设完后**完全退出**托盘区 Ollama（右键 Quit），再重新打开；或**新开** PowerShell 验证：
+
+```powershell
+echo $env:OLLAMA_MODELS
+# 期望：E:\AI\Models\ollama
 ```
 
 
 
-### 安装
+### 安装（程序到 D 盘）
 
-双击安装包，若可改路径选 `D:\Apps\AI\Ollama`。
+**不要**只双击安装包。在**普通 PowerShell** 中（路径按实际安装包名改）：
+
+```powershell
+cd D:\Packages\2026\Dev
+.\OllamaSetup.exe /DIR="D:\Apps\AI\Ollama"
+```
+
+安装器会把程序写到 `D:\Apps\AI\Ollama`，并尝试把该目录加入用户 **Path**。
+
+若已用默认方式装过（程序在 C 盘），可：
+
+1. **设置 → 应用** 卸载 Ollama  
+2. 确认已设 `OLLAMA_MODELS`（上节）  
+3. 再用 `/DIR=` 重装到 D 盘  
+
+> 若 `ollama` 命令找不到，手动把 `D:\Apps\AI\Ollama` 加到用户 Path，并**新开终端**。
+
+
+
+### 若程序只能留 C 盘（退而求其次）
+
+`OllamaSetup.exe` 的 `/DIR=` 若因权限/杀毒失败，可接受程序在 `%LOCALAPPDATA%\Programs\Ollama`（约几百 MB），**务必**仍设 `OLLAMA_MODELS=E:\AI\Models\ollama`——模型才是占盘主力。
+
+若 C 盘已有 `%USERPROFILE%\.ollama\models` 且很大：
+
+```powershell
+# 完全退出 Ollama 后
+robocopy "$env:USERPROFILE\.ollama\models" "E:\AI\Models\ollama" /E /MOVE
+```
+
+然后重启 Ollama，再 `ollama list` 确认模型仍在。
 
 ### 拉取模型
 
@@ -2956,6 +3007,14 @@ ollama list
 ### 验证
 
 ```powershell
+echo $env:OLLAMA_MODELS
+where.exe ollama
+# 程序期望：D:\Apps\AI\Ollama\ollama.exe（若用了 /DIR=）
+
+ollama list
+Get-ChildItem "E:\AI\Models\ollama" -ErrorAction SilentlyContinue | Select-Object -First 5 Name
+# pull 后应有 blobs / manifests 等
+
 ollama run qwen2.5:7b
 ```
 
@@ -3525,6 +3584,7 @@ Steam 与 Git / Cursor / Docker 无冲突；注意游戏盘预留足够空间（
 - [ ] `E:\Data\claude\settings.json`、`E:\Data\codex\auth.json` 存在（CC Switch 已配置）
 - [ ] CC Switch 已装（x64 选 `Windows.msi`），Claude Code / Codex 各启用 API Key 供应商
 - [ ] `claude`、`codex` 在 `E:\Workspace` 项目里能正常对话
+- [ ] Ollama：`OLLAMA_MODELS` 为 `E:\AI\Models\ollama`；程序在 `D:\Apps\AI\Ollama` 或已接受默认 C 盘程序路径（可选）
 - [ ] Python 在 `E:\Envs\Python\Python313`，`where python` 指向 E 盘
 - [ ] `PIP_CACHE_DIR` 为 `E:\Cache\pip`，`python -m pip cache dir` 一致
 - [ ] 已关闭 Windows 应用执行别名中的 `python.exe` / `python3.exe`
