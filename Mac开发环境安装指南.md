@@ -2,6 +2,7 @@
 
 > 适用场景：重装 macOS 后的个人开发机（Apple Silicon / Intel 均可）  
 > 与 [Windows 开发环境安装指南](./Windows开发环境安装指南.md) 配套，路径与工具链对齐，便于双机切换。  
+> **Cursor** 负责 AI 编码；若还需官方扩展生态（Live Share 等），可另装 [VS Code](#vs-code可选与-cursor-并存)。
 > 环境变量策略：**写入 `~/.zshrc` / `~/.zprofile`，不修改系统级 `/etc/*`（Docker 等除外）**
 
 ### 文档约定
@@ -832,8 +833,60 @@ curl http://localhost:11434/api/tags
 | OBS Studio | `brew install --cask obs` | 录屏 |
 | Steam | 官网 dmg | 游戏 |
 | Discord | 官网 dmg | 海外社区（非必需） |
-| ToDesk | 官网 Mac 版 | 远程桌面 |
+| VS Code | `/Applications/Visual Studio Code.app` | 官方扩展/Live Share，与 Cursor 分工 |
 | 微信 / QQ | 官网 Mac 版 | 日常通讯 |
+
+### VS Code（可选，与 Cursor 并存）
+
+> 与 Cursor **可共存**；扩展目录分开（Cursor → `~/Library/Application Support/Cursor`，VS Code → `Code`）。  
+> 常见理由：Live Share、仅支持 VS Code 的插件、团队统一编辑器。
+
+#### 路径
+
+| 用途 | 路径 |
+|------|------|
+| 程序 | `/Applications/Visual Studio Code.app` |
+| 用户数据 | `~/Library/Application Support/Code` → symlink `~/Dev/Cache/VSCode` |
+| 扩展 | `~/Dev/Cache/VSCode/extensions`（`VSCODE_EXTENSIONS`） |
+
+#### 安装
+
+```bash
+brew install --cask visual-studio-code
+# 或官网 dmg 拖入 /Applications
+```
+
+`~/.zshrc`（安装后、首次大量装扩展前）：
+
+```bash
+export VSCODE_EXTENSIONS="$HOME/Dev/Cache/VSCode/extensions"
+mkdir -p "$VSCODE_EXTENSIONS"
+```
+
+#### 缓存 symlink（推荐）
+
+```bash
+mkdir -p ~/Dev/Cache/VSCode/Application\ Support
+# 若已用过 VS Code，先退出再 mv 原目录内容
+if [ -d "$HOME/Library/Application Support/Code" ] && [ ! -L "$HOME/Library/Application Support/Code" ]; then
+  mv "$HOME/Library/Application Support/Code"/* ~/Dev/Cache/VSCode/Application\ Support/ 2>/dev/null
+  rm -rf "$HOME/Library/Application Support/Code"
+fi
+ln -sfn ~/Dev/Cache/VSCode/Application\ Support "$HOME/Library/Application Support/Code"
+```
+
+#### 验证
+
+```bash
+code --version
+cd ~/Dev/Workspace/Personal/your-project && code .
+```
+
+| 场景 | 工具 |
+|------|------|
+| AI 编码 | Cursor |
+| Live Share / 官方扩展 | VS Code |
+| Java | IDEA |
 
 ### Clash Verge Rev（macOS）
 
@@ -867,6 +920,7 @@ brew install --cask obs
 - [ ] IDEA 已装，`idea.properties` 指向 `~/Dev`
 - [ ] MySQL / Redis / Docker 按需可用
 - [ ] Cursor 缓存已 symlink 到 `~/Dev/Cache/Cursor`（可选但推荐）
+- [ ] VS Code 已装（可选），`VSCODE_EXTENSIONS` 在 `~/Dev/Cache/VSCode/extensions`
 - [ ] `.claude` / `.codex` 已 symlink，`claude` / `codex` 可用
 - [ ] CC Switch 已配 API（若用第三方 Key）
 - [ ] `OLLAMA_MODELS` 在 pull 前已设（若用 Ollama）
@@ -886,6 +940,7 @@ brew install --cask obs
 | Maven 仓库 | `E:\Cache\Maven` | `~/Dev/Cache/Maven` |
 | Node (nvm) | `E:\Envs\Node\nvm` | `~/.nvm` 或 `~/Dev/Envs/Node/nvm` |
 | Cursor 缓存 | Junction → `E:\Cache\Cursor` | symlink → `~/Dev/Cache/Cursor` |
+| VS Code 扩展 | `VSCODE_EXTENSIONS` → `E:\Cache\VSCode\extensions` | 同上 → `~/Dev/Cache/VSCode/extensions` |
 | Claude 数据 | Junction `E:\Data\claude` | symlink `~/Dev/Data/claude` |
 | Ollama 模型 | `E:\AI\Models\ollama` | `~/Dev/AI/Models/ollama` |
 | 安装包 | `D:\Packages\2026\` | `~/Dev/Packages/2026/` |
