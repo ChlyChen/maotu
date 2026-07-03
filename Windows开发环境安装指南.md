@@ -67,7 +67,7 @@ D:\
 │   ├── Communication\ # 微信、QQ、钉钉、ToDesk 等
 │   ├── Games\         # Steam 客户端
 │   ├── AI\            # Ollama 等（/DIR= 安装时）
-│   └── Utilities\     # 7-Zip、Everything、Termius 等
+│   └── Utilities\     # 7-Zip、Everything、Termius、VS Code 等
 ├── Portable\          # 绿色/便携工具（Git、Clash、OBS 等）
 │   ├── VCS\           # Git、Fork 相关
 │   ├── Network\       # Clash Verge Rev 便携版
@@ -201,7 +201,7 @@ powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
 ⑯ CC Switch（配 API Key 供应商 → 再正式使用 CLI）
 ⑰ Ollama（可选：先 OLLAMA_MODELS → OllamaSetup.exe /DIR= → 再 pull）
 ⑱ Python（按需：装 E 盘 + pip 缓存 + Path）
-⑲ 按需：Clash（下载受阻时提前）/ Termius / OBS / Steam / ToDesk / Postman / Go ...
+⑲ 按需：VS Code / Clash / Termius / OBS / Steam / ToDesk / Postman / Go ...
 ```
 
 > **流程要点**：`TEMP`/`TMP` 在装 Git 时即设；Claude/Codex 的 Junction 在装 CC Switch **之前**；Ollama 的 `OLLAMA_MODELS` 在**第一次 pull 之前**；国内拉包慢可在 ⑲ 提前装 Clash。
@@ -1833,6 +1833,7 @@ IDEA 中 **Settings → Languages & Frameworks → Flutter**：
 | `PIP_CACHE_DIR`            | `E:\Cache\pip`（装 Python 前设置）            |
 | `HTTP_PROXY`               | `http://127.0.0.1:7897`（仅终端不走系统代理时；端口以 Clash 为准） |
 | `HTTPS_PROXY`              | `http://127.0.0.1:7897`（同上）              |
+| `VSCODE_EXTENSIONS`        | `E:\Cache\VSCode\extensions`（装 VS Code 前，可选） |
 
 
 
@@ -2168,7 +2169,8 @@ curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
 
 ## 二十、Cursor
 
-> Cursor 是基于 VS Code 的 AI 代码编辑器，与 IDEA 互补：后端 Java 用 IDEA，全栈/前端/AI 辅助编码用 Cursor。
+> Cursor 是基于 VS Code 的 AI 代码编辑器，与 IDEA 互补：后端 Java 用 IDEA，全栈/前端/AI 辅助编码用 Cursor。  
+> 若还需**官方 VS Code 扩展生态**（Live Share、仅上架 VS Code 的插件等），可另装 [VS Code](#vs-code可选与-cursor-并存)，两者可共存。
 
 
 
@@ -3114,6 +3116,7 @@ Base URL: http://localhost:11434/v1
 | 软件               | 安装位置                                    | 何时装       |
 | ---------------- | --------------------------------------- | --------- |
 | Fork（Git 客户端）   | `%LOCALAPPDATA%\Fork`（程序）；Git 复用 `D:\Portable\VCS\Git\bin\git.exe` | Git 装好后，需要可视化 Git 时 |
+| VS Code          | `D:\Apps\Utilities\VSCode`；扩展缓存 `E:\Cache\VSCode` | 要官方扩展/Live Share，或与 Cursor 分工时 |
 | ToDesk（远程桌面）   | `D:\Apps\Communication\ToDesk`          | 需要远程连接本机或其它设备时 |
 | Termius（SSH）     | `D:\Apps\Utilities\Termius`             | 常连服务器、要图形化 SSH 时 |
 | OBS Studio       | `D:\Portable\Media\OBS-Studio`（便携推荐） | 录屏、直播、会议录制 |
@@ -3125,6 +3128,92 @@ Base URL: http://localhost:11434/v1
 | DBeaver          | `D:\Portable\DB\` 或 `D:\Apps\Database\` | 开源数据库客户端  |
 | Python           | `E:\Envs\Python\`                       | Python 开发 |
 | Go               | `E:\Envs\Go\`                           | Go 开发     |
+
+
+
+### VS Code（可选，与 Cursor 并存）
+
+> **Cursor 已覆盖大部分写代码场景**；装 VS Code 的常见理由：团队统一用 VS Code、**Live Share**、某些扩展**只支持官方 VS Code**、不想用 AI 时开轻量编辑器。  
+> 两者扩展目录**不共享**（Cursor 用 `%APPDATA%\Cursor`，VS Code 用 `%APPDATA%\Code`），需分别安装扩展。
+
+#### 路径规划
+
+| 用途 | 路径 |
+|------|------|
+| 程序 | `D:\Apps\Utilities\VSCode` |
+| 用户数据 | `%APPDATA%\Code` → Junction `E:\Cache\VSCode\Roaming` |
+| 扩展 | `E:\Cache\VSCode\extensions`（`VSCODE_EXTENSIONS`） |
+| 安装包 | `D:\Packages\2026\Dev\` |
+
+#### 安装前
+
+```powershell
+New-Item -ItemType Directory -Path "D:\Apps\Utilities\VSCode" -Force
+New-Item -ItemType Directory -Path "E:\Cache\VSCode\Roaming" -Force
+New-Item -ItemType Directory -Path "E:\Cache\VSCode\extensions" -Force
+```
+
+用户变量（**新开终端前**设好）：
+
+```powershell
+[Environment]::SetEnvironmentVariable('VSCODE_EXTENSIONS', 'E:\Cache\VSCode\extensions', 'User')
+```
+
+#### 安装程序（D 盘）
+
+1. [https://code.visualstudio.com/download](https://code.visualstudio.com/download) → **User Installer x64**
+2. 保存到 `D:\Packages\2026\Dev\`
+3. **普通 PowerShell** 安装（路径按实际安装包名改）：
+
+```powershell
+cd D:\Packages\2026\Dev
+.\VSCodeUserSetup-x64-*.exe /DIR="D:\Apps\Utilities\VSCode"
+```
+
+4. 勾选 **Add to PATH**、**Register Code as an editor for supported file types**（按需）
+
+> 若 `/DIR=` 失败，可接受程序在 `%LOCALAPPDATA%\Programs\Microsoft VS Code`，**仍建议**用下面 Junction + `VSCODE_EXTENSIONS` 迁数据。
+
+#### 缓存迁出 C 盘（Junction，推荐首次打开前）
+
+```powershell
+# 管理员 PowerShell；完全退出 VS Code 后
+New-Item -ItemType Directory -Path "E:\Cache\VSCode\Roaming" -Force
+
+if (Test-Path "$env:APPDATA\Code") {
+    robocopy "$env:APPDATA\Code" "E:\Cache\VSCode\Roaming" /E /MOVE /R:1 /W:1
+    Remove-Item "$env:APPDATA\Code" -Recurse -Force -ErrorAction SilentlyContinue
+}
+New-Item -ItemType Junction -Path "$env:APPDATA\Code" -Target "E:\Cache\VSCode\Roaming"
+```
+
+#### 用户 Path（若安装时未自动添加）
+
+```text
+D:\Apps\Utilities\VSCode\bin
+```
+
+#### 与 Cursor / IDEA 分工
+
+| 场景 | 工具 |
+|------|------|
+| AI 辅助日常编码 | Cursor |
+| 官方扩展、Live Share、协作者用 VS Code | **VS Code** |
+| Java / 后端工程 | IDEA |
+| 终端 Git | `git` / Fork |
+
+#### 验证
+
+```powershell
+code --version
+echo $env:VSCODE_EXTENSIONS
+Get-Item "$env:APPDATA\Code" | Select-Object LinkType, Target
+```
+
+```powershell
+cd E:\Workspace\Personal\your-project
+code .
+```
 
 
 
@@ -3676,6 +3765,7 @@ New-Item -ItemType Junction -Path "$env:APPDATA\discord" -Target "E:\Cache\Disco
 - [ ] Flutter SDK 在 `E:\SDK\Flutter\flutter`
 - [ ] `flutter doctor` 无阻塞性错误
 - [ ] Cursor 已装到 `D:\Apps\Cursor`，`cursor` 命令可用
+- [ ] VS Code 在 `D:\Apps\Utilities\VSCode`（可选），`code` 可用，`VSCODE_EXTENSIONS` 指向 `E:\Cache\VSCode\extensions`
 - [ ] Cursor 缓存已通过 Junction 迁到 `E:\Cache\Cursor\Roaming` / `Local`
 - [ ] Claude Code 已装（国内可用 WinGet），`claude --version` 正常
 - [ ] Codex 已装，Path 含 `%LOCALAPPDATA%\Programs\OpenAI\Codex\bin`，`codex --version` 正常
