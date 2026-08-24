@@ -2103,9 +2103,29 @@ curl.exe -sI https://downloads.claude.ai/claude-code-releases/latest
 
 **处理**：按 `Ctrl + C` 退出 → 先在 [CC Switch](#二十二cc-switch) 里为 **Codex** 添加并启用 API Key 供应商 → **新开终端**再 `codex`。若仍弹出登录界面，选 **3. Provide your own API key**。
 
-### 23. CC Switch 切换后 API 仍不通
+### 23. CC Switch 切换后 Codex 仍连 `api.openai.com`（401 invalid_api_key）
 
-**处理**：Codex 切换后新开终端；检查 API Key、Base URL、模型名；Claude Code 可在 CC Switch 里重新点「使用」。
+**现象**：已在 CC Switch 为 Codex 启用第三方供应商，但启动后出现：
+
+```text
+Falling back from WebSockets to HTTPS transport
+unexpected status 401 Unauthorized: Incorrect API key provided: sk-xxxx
+url: wss://api.openai.com/v1/responses
+url: https://api.openai.com/v1/responses
+```
+
+**原因**：Codex **只认** `config.toml` 里的 `model_provider` + `[model_providers.<id>]` 段。顶层单独写 `base_url` **会被忽略**，仍走内置 `openai` provider，直连官方。第三方 Key 被送到 OpenAI 校验 → 401。CC Switch 部分版本（含「本地代理接管」）会写成这种扁平格式（见 [cc-switch#3449](https://github.com/farion1231/cc-switch/issues/3449)）。
+
+另一种路径分裂：设了 `CODEX_HOME` 但没做 Junction，CC Switch 写 `%USERPROFILE%\.codex`，CLI 读 `E:\Data\codex`。
+
+**处理**：
+
+1. 新开终端跑 `codex doctor`：
+   - 坏：`model provider: openai`，endpoint 含 `api.openai.com`
+   - 好：`model provider` 为 `custom` / `ccswitch` 等，base URL 为你的代理或 `http://127.0.0.1:15721/v1`
+2. 打开 `E:\Data\codex\config.toml`（Junction 后）或 `%USERPROFILE%\.codex\config.toml`。若只有顶层 `base_url`、没有 `model_provider`，按第二十二章「Codex 正确的 config.toml 格式」改。
+3. 完全退出 `codex` 后**新开终端**再跑。下次 CC Switch 再点「使用」可能又覆盖回去，需再检查。
+4. Claude Code 仍不通时，在 CC Switch 里重新点「使用」。
 
 ### 24. `codex` 命令找不到，但 `codex.exe` 存在
 
@@ -2739,6 +2759,7 @@ E:\Data\codex\attachments\
 | `.claude.json not found`                     | 从 `E:\Data\claude\backups\` 最新 backup 复制恢复                |
 | `claude doctor` Remote Control ‼             | API Key 用户可忽略                                             |
 | 换 API 供应商                                    | CC Switch 切换；Codex 需新开终端                                  |
+| Codex 仍连 `api.openai.com`、401 invalid_api_key | `codex doctor`；补 `model_provider` + `[model_providers.*]`（FAQ 23） |
 | C 盘被 CLI 数据占满                                | `CLAUDE_CONFIG_DIR` / `CODEX_HOME` + Junction             |
 
 
@@ -2866,7 +2887,7 @@ GitHub：[https://github.com/farion1231/cc-switch](https://github.com/farion1231
 | ----------- | --------------- | --------------------------------------- |
 | Claude Code | `settings.json` | API Key、Base URL、模型                     |
 | Codex       | `auth.json`     | API Key                                 |
-| Codex       | `config.toml`   | `model_provider`、`base_url`、`model`、沙箱等 |
+| Codex       | `config.toml`   | **必须有** `model_provider` + `[model_providers.*]`（顶层 `base_url` 会被忽略） |
 
 
 
@@ -2908,8 +2929,9 @@ claude
 | ------------ | ----------------------------------------------------- |
 | 切换供应商后       | **Codex 必须新开终端**；Claude Code 多数情况可热切换                 |
 | 纯 API Key 计费 | **不要**开「保留官方 ChatGPT 登录」类选项（避免计费走 ChatGPT 订阅而非 API）   |
-| 手改配置         | 交给 CC Switch，避免与 GUI 写入冲突                             |
+| 手改配置         | 第三方路由格式可手补 `model_provider` 段；其余尽量交给 CC Switch，避免与 GUI 冲突 |
 | 第三方代理        | Base URL、模型名必须与供应商文档一致；Codex 需 **Responses API** 兼容端点 |
+| Codex 仍打官方地址 | 不是「没切供应商」，而是 `config.toml` 缺 `model_provider` 段（见 FAQ 23） |
 
 
 
@@ -2954,14 +2976,46 @@ Get-Content "E:\Data\claude\settings.json"   # 应有 API 相关配置
 **Codex**：
 
 ```powershell
-Get-Content "E:\Data\codex\config.toml"        # model_provider = "custom"、base_url 为你的代理
+codex doctor
+Get-Content "E:\Data\codex\config.toml"        # 必须有 model_provider + [model_providers.*]
 Get-Content "E:\Data\codex\auth.json"        # 应有 OPENAI_API_KEY（勿外泄）
 ```
 
+`codex doctor` 若仍显示 `model provider: openai`、endpoint 为 `api.openai.com`，说明切换没生效，见第十九章 FAQ 23。
 
-| 检查项               | 走 CC Switch API    | 走 ChatGPT 订阅                    |
+#### Codex 正确的 config.toml 格式
+
+Codex **忽略顶层** `base_url`。下面这种扁平写法等于没配路由，请求会直连官方：
+
+```toml
+# 错误：会被忽略
+base_url = "https://你的中转/v1"
+wire_api = "responses"
+model = "供应商给的模型 ID"
+```
+
+必须同时有顶层 `model_provider` 和同名的 `[model_providers.<id>]` 段：
+
+```toml
+model_provider = "custom"
+model = "供应商给的模型 ID"
+
+[model_providers.custom]
+name = "CC-Switch"
+base_url = "https://你的中转/v1"          # 本地代理则为 http://127.0.0.1:15721/v1
+wire_api = "responses"
+requires_openai_auth = false
+```
+
+保留原有 `[windows]`、`sandbox` 等段，不要整文件覆盖。改完后完全退出 `codex`，**新开终端**再跑。
+
+> 下次在 CC Switch 再点「使用」可能又写成扁平格式，覆盖后需再检查 `codex doctor`。
+
+
+| 检查项               | 走 CC Switch API    | 走 ChatGPT 订阅 / 官方直连              |
 | ----------------- | ------------------ | ------------------------------- |
-| Codex `base_url`  | 第三方代理地址            | 官方或空                            |
+| `codex doctor`    | provider 非 `openai`，base URL 为代理 | `model provider: openai`、`api.openai.com` |
+| Codex `base_url`  | 在 `[model_providers.*]` 段内 | 顶层扁平字段、官方或空                     |
 | Codex `auth.json` | 有 `OPENAI_API_KEY` | `auth_mode: chatgpt`、Key 为 null |
 | 供应商后台             | 有调用记录              | 走 OpenAI/ChatGPT 账单             |
 
@@ -3773,6 +3827,7 @@ New-Item -ItemType Junction -Path "$env:APPDATA\discord" -Target "E:\Cache\Disco
 - [ ] `.claude` / `.codex` 已 Junction 到 `E:\Data\claude` / `E:\Data\codex`
 - [ ] `E:\Data\claude\settings.json`、`E:\Data\codex\auth.json` 存在（CC Switch 已配置）
 - [ ] CC Switch 已装（x64 选 `Windows.msi`），Claude Code / Codex 各启用 API Key 供应商
+- [ ] `codex doctor` 的 provider **不是** `openai`、endpoint **不是** `api.openai.com`（第三方 Key 时）
 - [ ] `claude`、`codex` 在 `E:\Workspace` 项目里能正常对话
 - [ ] Ollama：`OLLAMA_MODELS` 为 `E:\AI\Models\ollama`；程序在 `D:\Apps\AI\Ollama` 或已接受默认 C 盘程序路径（可选）
 - [ ] Python 在 `E:\Envs\Python\Python313`，`where python` 指向 E 盘
@@ -3788,4 +3843,4 @@ New-Item -ItemType Junction -Path "$env:APPDATA\discord" -Target "E:\Cache\Disco
 
 ---
 
-*文档版本：2026-07-02 v2（审阅：文档约定 / Git cmd·bin / C 盘例外 / Ollama·Fork FAQ / Discord 可选）*
+*文档版本：2026-08-24 v3（补充 Codex 经 CC Switch 仍直连 api.openai.com 的排查）*

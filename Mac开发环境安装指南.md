@@ -666,6 +666,35 @@ CC Switch 只写 `~/.claude` / `~/.codex`，需 symlink（见二十、二十一�
 
 默认用 `$(which git)` 即可；无 Windows `cmd`/`bin` 之分。
 
+### 10. CC Switch 切换后 Codex 仍连 `api.openai.com`（401 invalid_api_key）
+
+**现象**：已启用第三方供应商，但 Codex 报 `Falling back from WebSockets to HTTPS transport`，url 仍是 `wss://api.openai.com/v1/responses` / `https://api.openai.com/v1/responses`，401 `Incorrect API key`。
+
+**原因**：Codex 忽略顶层 `base_url`，必须有 `model_provider` + `[model_providers.<id>]`。CC Switch 部分版本会写成扁平格式（[cc-switch#3449](https://github.com/farion1231/cc-switch/issues/3449)）。另：设了 `CODEX_HOME` 但没做 `~/.codex` symlink 时，CC Switch 与 CLI 读写的不是同一份文件。
+
+**处理**：
+
+```bash
+codex doctor
+# 坏：model provider: openai，endpoint 含 api.openai.com
+# 好：provider 为 custom / ccswitch，base URL 为你的代理或 http://127.0.0.1:15721/v1
+```
+
+打开 `~/Dev/Data/codex/config.toml`（symlink 后）或 `~/.codex/config.toml`，改成：
+
+```toml
+model_provider = "custom"
+model = "供应商给的模型 ID"
+
+[model_providers.custom]
+name = "CC-Switch"
+base_url = "https://你的中转/v1"          # 本地代理则为 http://127.0.0.1:15721/v1
+wire_api = "responses"
+requires_openai_auth = false
+```
+
+完全退出 `codex` 后新开终端再跑。下次 CC Switch 再点「使用」可能又覆盖回去。
+
 ---
 
 ## 十九、Cursor
@@ -779,9 +808,10 @@ GitHub Releases 下载 **macOS `.dmg`（按芯片选 arm64 / x64）**
 1. 先装好 `claude`、`codex` 并建好 `~/.claude` / `~/.codex` symlink  
 2. CC Switch → **Claude Code** 页添加供应商 → Enable  
 3. **Codex** 页单独添加 → Enable  
-4. 新开终端在 `~/Dev/Workspace` 下验证
+4. 新开终端在 `~/Dev/Workspace` 下验证：`codex doctor` 的 provider **不能**仍是 `openai`、endpoint **不能**是 `api.openai.com`
 
-> CC Switch **不读取** `CLAUDE_CONFIG_DIR` / `CODEX_HOME`，只写 `~/.claude`、`~/.codex`。
+> CC Switch **不读取** `CLAUDE_CONFIG_DIR` / `CODEX_HOME`，只写 `~/.claude`、`~/.codex`。  
+> Codex 忽略顶层 `base_url`；若切换后仍连官方，见第十八章 FAQ 10。
 
 ---
 
@@ -922,7 +952,7 @@ brew install --cask obs
 - [ ] Cursor 缓存已 symlink 到 `~/Dev/Cache/Cursor`（可选但推荐）
 - [ ] VS Code 已装（可选），`VSCODE_EXTENSIONS` 在 `~/Dev/Cache/VSCode/extensions`
 - [ ] `.claude` / `.codex` 已 symlink，`claude` / `codex` 可用
-- [ ] CC Switch 已配 API（若用第三方 Key）
+- [ ] CC Switch 已配 API（若用第三方 Key）；`codex doctor` 的 provider 不是 `openai`
 - [ ] `OLLAMA_MODELS` 在 pull 前已设（若用 Ollama）
 - [ ] Fork / Clash / Termius 等按需安装
 - [ ] 在 `~/Dev/Workspace` 下成功打开并运行过一个项目
@@ -947,4 +977,4 @@ brew install --cask obs
 
 ---
 
-*文档版本：2026-07-02（与 Windows 指南配套初版）*
+*文档版本：2026-08-24（补充 Codex 经 CC Switch 仍直连 api.openai.com 的排查）*
